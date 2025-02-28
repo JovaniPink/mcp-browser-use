@@ -4,6 +4,8 @@
 
 > MCP server for [browser-use](https://github.com/browser-use/browser-use).
 
+<a href="https://glama.ai/mcp/servers/tjea5rgnbv"><img width="380" height="200" src="https://glama.ai/mcp/servers/tjea5rgnbv/badge" alt="Browser Use Server MCP server" /></a>
+
 ## Overview
 
 This repository contains the server for the [browser-use](https://github.com/browser-use/browser-use) library, which provides a powerful browser automation system that enables AI agents to interact with web browsers through natural language. The server is built on Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) and provides a seamless integration with the [browser-use](https://github.com/browser-use/browser-use) library.
