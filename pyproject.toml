@@ -12,6 +12,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1.1",
+    "pytest-asyncio>=0.23.6",
+]
+
 dependencies = [
     "pydantic>=2.10.5",
     "fastapi>=0.115.6",
