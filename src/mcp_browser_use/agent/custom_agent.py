@@ -23,11 +23,7 @@ from browser_use.browser.browser import Browser
 from browser_use.browser.context import BrowserContext
 from browser_use.browser.views import BrowserStateHistory
 from browser_use.controller.service import Controller
-from browser_use.telemetry.views import (
-    AgentEndTelemetryEvent,
-    AgentRunTelemetryEvent,
-    AgentStepErrorTelemetryEvent,
-)
+from browser_use.telemetry.views import AgentEndTelemetryEvent, AgentRunTelemetryEvent
 from browser_use.utils import time_execution_async
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
@@ -420,13 +416,7 @@ class CustomAgent(Agent):
                 return
 
             for r in result:
-                if r.error:
-                    self.telemetry.capture(
-                        AgentStepErrorTelemetryEvent(
-                            agent_id=self.agent_id,
-                            error=r.error,
-                        )
-                    )
+                logger.warning(f"🔧 Action result: {r}")
 
             if state:
                 self._make_history_item(model_output, state, result)
