@@ -5,7 +5,7 @@ import pyperclip
 from browser_use.agent.views import ActionResult
 from browser_use.browser.context import BrowserContext
 from browser_use.controller.service import Controller
-from browser_use.controller.registry import ActionRegistryError
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class CustomController(Controller):
                 page = await browser.get_current_page()
                 if page is None:
                     # It's possible there's no current page
-                    raise ActionRegistryError("No active browser page found.")
+                    raise RuntimeError("No active browser page found.")
                 await page.keyboard.type(text)
                 logger.debug("Pasted text from clipboard into the browser.")
                 return ActionResult(extracted_content=text)
