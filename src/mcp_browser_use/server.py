@@ -46,7 +46,7 @@ async def _cleanup_browser_resources() -> None:
     try:
         if _global_agent_state:
             try:
-                await _global_agent_state.request_stop()
+                _global_agent_state.request_stop()
             except Exception as stop_error:
                 logger.warning("Error stopping agent state: %s", stop_error)
 
