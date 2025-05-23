@@ -605,6 +605,7 @@ class CustomAgent(Agent):
         title_font: ImageFont.FreeTypeFont,
         margin: int,
         logo: Image.Image | None,
+        line_spacing: float,  # Added line_spacing parameter
     ) -> Image.Image:
         """Overlay the step number and goal text onto a screenshot image."""
 
