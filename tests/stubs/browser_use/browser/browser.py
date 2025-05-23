@@ -1,0 +1,2 @@
+class Browser:
+    pass

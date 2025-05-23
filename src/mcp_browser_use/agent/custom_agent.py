@@ -541,6 +541,137 @@ class CustomAgent(Agent):
         else:
             logger.warning("No images found in history to create GIF")
 
+    def _create_task_frame(
+        self,
+        task_text: str,
+        screenshot_b64: str,
+        title_font: ImageFont.FreeTypeFont,
+        regular_font: ImageFont.FreeTypeFont,
+        logo: Image.Image | None,
+        line_spacing: float,
+    ) -> Image.Image:
+        """Return an image with the task text overlaid on the screenshot."""
+
+        margin = 40
+        img = Image.open(io.BytesIO(base64.b64decode(screenshot_b64))).convert(
+            "RGBA"
+        )
+
+        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        max_width = img.width - margin * 2
+        text_lines: list[str] = []
+        words = task_text.split()
+        line = ""
+        for word in words:
+            test = f"{line} {word}".strip()
+            if draw.textlength(test, font=regular_font) <= max_width:
+                line = test
+            else:
+                text_lines.append(line)
+                line = word
+        if line:
+            text_lines.append(line)
+
+        y = margin
+        title_bbox = draw.textbbox((margin, y), "Task", font=title_font)
+        title_height = title_bbox[3] - title_bbox[1]
+        total_height = title_height + int(margin * 0.5)
+        for t in text_lines:
+            bbox = draw.textbbox((margin, 0), t, font=regular_font)
+            total_height += int((bbox[3] - bbox[1]) * line_spacing)
+
+        if logo:
+            total_height = max(total_height, logo.height + margin * 2)
+
+        draw.rectangle(
+            [(0, 0), (img.width, total_height)],
+            fill=(0, 0, 0, 180),
+        )
+
+        draw.text((margin, y), "Task", font=title_font, fill="white")
+        y += title_height + int(margin * 0.5)
+        for t in text_lines:
+            draw.text((margin, y), t, font=regular_font, fill="white")
+            bbox = draw.textbbox((margin, y), t, font=regular_font)
+            y += int((bbox[3] - bbox[1]) * line_spacing)
+
+        if logo:
+            overlay.paste(
+                logo,
+                (img.width - logo.width - margin, margin),
+                logo if logo.mode == "RGBA" else None,
+            )
+
+        img.alpha_composite(overlay)
+        return img.convert("RGB")
+
+    def _add_overlay_to_image(
+        self,
+        image: Image.Image,
+        step_number: int,
+        goal_text: str,
+        regular_font: ImageFont.FreeTypeFont,
+        title_font: ImageFont.FreeTypeFont,
+        margin: int,
+        logo: Image.Image | None,
+    ) -> Image.Image:
+        """Overlay the step number and goal text onto a screenshot image."""
+
+        image = image.convert("RGBA")
+        overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        step_text = f"Step {step_number}"
+        max_width = image.width - margin * 2
+
+        lines: list[str] = []
+        words = goal_text.split()
+        line = ""
+        for word in words:
+            test = f"{line} {word}".strip()
+            if draw.textlength(test, font=regular_font) <= max_width:
+                line = test
+            else:
+                lines.append(line)
+                line = word
+        if line:
+            lines.append(line)
+
+        y = margin
+        step_bbox = draw.textbbox((margin, y), step_text, font=title_font)
+        step_height = step_bbox[3] - step_bbox[1]
+        total_height = step_height + int(margin * 0.5)
+        for l in lines:
+            bbox = draw.textbbox((margin, 0), l, font=regular_font)
+            total_height += bbox[3] - bbox[1]
+
+        if logo:
+            total_height = max(total_height, logo.height + margin * 2)
+
+        draw.rectangle(
+            [(0, 0), (image.width, total_height)],
+            fill=(0, 0, 0, 180),
+        )
+
+        draw.text((margin, y), step_text, font=title_font, fill="white")
+        y += step_height + int(margin * 0.5)
+        for l in lines:
+            draw.text((margin, y), l, font=regular_font, fill="white")
+            bbox = draw.textbbox((margin, y), l, font=regular_font)
+            y += bbox[3] - bbox[1]
+
+        if logo:
+            overlay.paste(
+                logo,
+                (image.width - logo.width - margin, margin),
+                logo if logo.mode == "RGBA" else None,
+            )
+
+        image.alpha_composite(overlay)
+        return image.convert("RGB")
+
     async def run(self, max_steps: int = 100) -> AgentHistoryList:
         """
         Execute the entire task for up to max_steps or until 'done'.
