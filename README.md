@@ -216,7 +216,7 @@ The server supports various browser actions through natural language:
 
 ## Security
 
-I want to note that their are some Chrome settings that are set to allow for the browser to be controlled by the server. This is a security risk and should be used with caution. The server is not intended to be used in a production environment.
+I want to note that there are some Chrome settings that are set to allow for the browser to be controlled by the server. This is a security risk and should be used with caution. The server is not intended to be used in a production environment.
 
 Security Details: [SECURITY.MD](./documentation/SECURITY.md)
 
