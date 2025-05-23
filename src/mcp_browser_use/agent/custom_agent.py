@@ -561,18 +561,7 @@ class CustomAgent(Agent):
         draw = ImageDraw.Draw(overlay)
 
         max_width = img.width - margin * 2
-        text_lines: list[str] = []
-        words = task_text.split()
-        line = ""
-        for word in words:
-            test = f"{line} {word}".strip()
-            if draw.textlength(test, font=regular_font) <= max_width:
-                line = test
-            else:
-                text_lines.append(line)
-                line = word
-        if line:
-            text_lines.append(line)
+        text_lines: list[str] = self._wrap_text_to_lines(draw, task_text, regular_font, max_width)
 
         y = margin
         title_bbox = draw.textbbox((margin, y), "Task", font=title_font)
