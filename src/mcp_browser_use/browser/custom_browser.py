@@ -62,7 +62,7 @@ class CustomBrowser(Browser):
 
         # 3) Otherwise, launch a new Chromium instance in headless/non-headless mode
         try:
-            # BECARFUL: This is a list of arguments that can be used to disable security features
+            # Be careful: this list of arguments can disable security features.
             disable_security_args = []
             if self.config.disable_security:
                 disable_security_args = [
