@@ -69,7 +69,7 @@ def test_custom_agent_creates_independent_default_controllers(custom_agent, monk
 
 
 def test_custom_agent_uses_supplied_controller(custom_agent):
-    llm = BaseChatModel()
+    llm = Mock(spec=BaseChatModel)
     provided_controller = custom_agent.Controller()
 
     agent = custom_agent.CustomAgent(
