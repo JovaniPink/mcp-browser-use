@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(BASE_DIR), "src"))
 
 import pytest
 from langchain_core.language_models.chat_models import BaseChatModel
+from unittest.mock import Mock
 
 import mcp_browser_use.agent.custom_agent as custom_agent_module
 

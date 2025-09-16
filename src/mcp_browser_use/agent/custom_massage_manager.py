@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 from typing import List, Optional, Type
 
@@ -47,10 +48,9 @@ class CustomMassageManager(MessageManager):
             tool_call_in_content=tool_call_in_content,
         )
 
-        # Custom: Move Task info to state_message
-        self.history = MessageHistory()
-        self._add_message_with_tokens(self.system_prompt)
-        tool_calls = [
+        # Store template for example tool call so we can rebuild the history when needed
+        self.tool_call_in_content = tool_call_in_content
+        self._example_tool_call_template = [
             {
                 "name": "CustomAgentOutput",
                 "args": {
@@ -67,19 +67,30 @@ class CustomMassageManager(MessageManager):
                 "type": "tool_call",
             }
         ]
+        self.reset_history()
+
+    def _create_example_tool_call_message(self) -> AIMessage:
+        tool_calls = copy.deepcopy(self._example_tool_call_template)
         if self.tool_call_in_content:
             # openai throws error if tool_calls are not responded -> move to content
-            example_tool_call = AIMessage(
+            return AIMessage(
                 content=f"{tool_calls}",
                 tool_calls=[],
             )
-        else:
-            example_tool_call = AIMessage(
-                content=f"",
-                tool_calls=tool_calls,
-            )
+        return AIMessage(
+            content="",
+            tool_calls=tool_calls,
+        )
 
-        self._add_message_with_tokens(example_tool_call)
+    def reset_history(self) -> None:
+        """Reset the message history to the initial seeded state."""
+
+        self.history = MessageHistory()
+        if hasattr(self.history, "total_tokens"):
+            self.history.total_tokens = 0
+
+        self._add_message_with_tokens(self.system_prompt)
+        self._add_message_with_tokens(self._create_example_tool_call_message())
 
     def add_state_message(
         self,

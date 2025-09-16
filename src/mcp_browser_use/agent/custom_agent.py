@@ -18,7 +18,6 @@ from browser_use.agent.views import (
     AgentOutput,
     AgentHistory,
 )
-from browser_use.agent.message_manager.views import MessageHistory, ManagedMessage
 from browser_use.browser.browser import Browser
 from browser_use.browser.context import BrowserContext
 from browser_use.browser.views import BrowserStateHistory
@@ -356,9 +355,8 @@ class CustomAgent(Agent):
             )
             logger.debug(f"Generated summary: {summary_message}")
 
-            self.message_manager.history = MessageHistory(
-                messages=[ManagedMessage(message=summary_message)]
-            )
+            self.message_manager.reset_history()
+            self.message_manager._add_message_with_tokens(summary_message)
             return True
 
         except Exception as e:
