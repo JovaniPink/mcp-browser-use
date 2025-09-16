@@ -356,7 +356,7 @@ class CustomAgent(Agent):
             logger.debug(f"Generated summary: {summary_message}")
 
             self.message_manager.reset_history()
-            self.message_manager._add_message_with_tokens(summary_message)
+            self.message_manager._add_message_with_tokens(summary_message)  # Consider creating a public method for this
             return True
 
         except Exception as e:
