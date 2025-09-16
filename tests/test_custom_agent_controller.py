@@ -24,21 +24,9 @@ def custom_agent(monkeypatch):
     )
 
     def fake_agent_init(self, *args, **kwargs):
-        self.task = kwargs.get("task")
-        self.llm = kwargs.get("llm")
-        self.browser = kwargs.get("browser")
-        self.browser_context = kwargs.get("browser_context")
-        self.system_prompt_class = kwargs.get("system_prompt_class")
-        self.max_input_tokens = kwargs.get("max_input_tokens")
-        self.include_attributes = kwargs.get("include_attributes")
-        self.max_error_length = kwargs.get("max_error_length")
-        self.max_actions_per_step = kwargs.get("max_actions_per_step")
-        self.tool_call_in_content = kwargs.get("tool_call_in_content")
-        self.use_vision = kwargs.get("use_vision")
-        self.save_conversation_path = kwargs.get("save_conversation_path")
-        self.max_failures = kwargs.get("max_failures")
-        self.retry_delay = kwargs.get("retry_delay")
-        self.validate_output = kwargs.get("validate_output")
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        # Set attributes not passed in kwargs that are needed
         self.n_steps = 0
         self._last_result = None
         self.message_manager = None
