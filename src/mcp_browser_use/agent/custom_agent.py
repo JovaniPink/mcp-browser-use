@@ -524,6 +524,7 @@ class CustomAgent(Agent):
                     title_font=title_font,
                     margin=margin,
                     logo=logo,
+                    line_spacing=line_spacing,
                 )
 
             images.append(image)
@@ -595,6 +596,46 @@ class CustomAgent(Agent):
 
         img.alpha_composite(overlay)
         return img.convert("RGB")
+
+    def _wrap_text_to_lines(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        max_width: int,
+    ) -> list[str]:
+        """Split ``text`` into lines that fit within ``max_width`` pixels."""
+
+        if not text:
+            return []
+
+        if max_width <= 0:
+            return [text]
+
+        wrapped_lines: list[str] = []
+
+        lines = text.splitlines()
+        if not lines:
+            lines = [text]
+
+        for raw_line in lines:
+            words = raw_line.split()
+            if not words:
+                wrapped_lines.append("")
+                continue
+
+            current_line = words[0]
+            for word in words[1:]:
+                candidate = f"{current_line} {word}" if current_line else word
+                if draw.textlength(candidate, font=font) <= max_width:
+                    current_line = candidate
+                else:
+                    wrapped_lines.append(current_line)
+                    current_line = word
+
+            wrapped_lines.append(current_line)
+
+        return wrapped_lines
 
     def _add_overlay_to_image(
         self,

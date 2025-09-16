@@ -8,13 +8,6 @@ BASE_DIR = os.path.dirname(__file__)
 sys.path.insert(0, os.path.join(BASE_DIR, 'stubs'))
 sys.path.insert(0, os.path.join(os.path.dirname(BASE_DIR), 'src'))
 
-# Create a minimal mcp_browser_use package without triggering server imports
-import types, pathlib
-pkg_root = pathlib.Path(os.path.dirname(BASE_DIR)) / 'src' / 'mcp_browser_use'
-mcp_pkg = types.ModuleType('mcp_browser_use')
-mcp_pkg.__path__ = [str(pkg_root)]
-sys.modules.setdefault('mcp_browser_use', mcp_pkg)
-
 from PIL import Image
 
 from mcp_browser_use.agent.custom_agent import CustomAgent
