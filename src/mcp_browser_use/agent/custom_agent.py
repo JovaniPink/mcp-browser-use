@@ -51,7 +51,7 @@ class CustomAgent(Agent):
         add_infos: str = "",
         browser: Optional[Browser] = None,
         browser_context: Optional[BrowserContext] = None,
-        controller: Controller = Controller(),
+        controller: Optional[Controller] = None,
         use_vision: bool = True,
         save_conversation_path: Optional[str] = None,
         max_failures: int = 5,
@@ -82,7 +82,8 @@ class CustomAgent(Agent):
         :param add_infos: Additional information or context to pass to the agent.
         :param browser: Optional Browser instance.
         :param browser_context: Optional BrowserContext to share state.
-        :param controller: Controller for handling multi-step actions.
+        :param controller: Optional controller for handling multi-step actions. A new
+            controller is created when not provided.
         :param use_vision: Whether to use vision-based element detection.
         :param save_conversation_path: File path to store conversation logs.
         :param max_failures: Max consecutive failures allowed before aborting.
@@ -96,6 +97,9 @@ class CustomAgent(Agent):
         :param tool_call_in_content: Whether tool calls are in the raw model content.
         :param agent_state: Shared state to detect external stop signals, store last valid state, etc.
         """
+        controller = controller or Controller()
+        self.controller = controller
+
         super().__init__(
             task=task,
             llm=llm,
