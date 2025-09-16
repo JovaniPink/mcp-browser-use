@@ -57,9 +57,12 @@ async def create_client_session(
             "'client_kwargs' cannot be combined with 'client_factory'."
         )
 
-    session_client = client
-    if session_client is None:
-        session_client = client_factory() if client_factory else Client(app, **client_kwargs)
+    if client is not None:
+        session_client = client
+    elif client_factory is not None:
+        session_client = client_factory()
+    else:
+        session_client = Client(app, **client_kwargs)
 
     async with session_client as connected_client:
         yield connected_client
