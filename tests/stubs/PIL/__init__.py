@@ -54,6 +54,8 @@ class ImageDraw:
         def textlength(self, text, font=None):
             return len(text) * 10
 
+    ImageDraw = Draw
+
 class ImageFont:
     class FreeTypeFont:
         pass
