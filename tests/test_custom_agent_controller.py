@@ -60,7 +60,7 @@ def test_custom_agent_creates_independent_default_controllers(custom_agent, monk
 
     monkeypatch.setattr(custom_agent, "Controller", TrackingController)
 
-    llm = BaseChatModel()
+    llm = Mock(spec=BaseChatModel)
     agent_one = custom_agent.CustomAgent(task="Task one", llm=llm)
     agent_two = custom_agent.CustomAgent(task="Task two", llm=llm)
 
