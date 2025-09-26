@@ -53,7 +53,7 @@ cd mcp-browser-use
 uv sync
 ```
 
-Copy `sample.env.env` to `.env` (or export the variables in another way) and update the values for the providers you plan to use.
+Copy `sample.env` to `.env` (or export the variables in another way) and update the values for the providers you plan to use.
 
 ### Launching the server
 
