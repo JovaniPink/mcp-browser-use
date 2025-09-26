@@ -2,7 +2,7 @@
 
 This guide describes every configuration option recognised by the MCP Browser Use server. All settings can be supplied as environment variables (e.g. via a `.env` file loaded with [`python-dotenv`](https://pypi.org/project/python-dotenv/)) or injected by your MCP client.
 
-The sample file at [`sample.env.env`](../sample.env.env) contains a ready-to-copy template with placeholders for secrets.
+The sample file at [`sample.env.example`](../sample.env.example) contains a ready-to-copy template with placeholders for secrets.
 
 ## How configuration is loaded
 
