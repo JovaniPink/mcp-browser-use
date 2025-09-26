@@ -18,6 +18,12 @@ from typing import Any, Dict, Optional
 from browser_use import BrowserSession
 from browser_use.browser.profile import ProxySettings
 
+# Logging
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+
 logger = logging.getLogger(__name__)
 
 _BOOL_TRUE = {"1", "true", "yes", "on"}

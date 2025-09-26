@@ -15,8 +15,11 @@ from mcp_browser_use.browser.browser_manager import create_browser_session
 from mcp_browser_use.utils import utils
 from mcp_browser_use.utils.agent_state import AgentState
 
-# Configure logging for the entire module
-logging.basicConfig(level=logging.INFO)
+# Logging
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 app = FastMCP("mcp_browser_use")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 from typing import List, Optional, Type
 
 from browser_use.agent.message_manager.service import MessageManager
@@ -15,6 +16,12 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, AIMessage
 
 from mcp_browser_use.agent.custom_prompts import CustomAgentMessagePrompt
+
+# Logging
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 
 logger = logging.getLogger(__name__)
 
