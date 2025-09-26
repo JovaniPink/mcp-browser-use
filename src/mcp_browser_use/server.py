@@ -7,6 +7,7 @@ import traceback
 import logging
 from typing import Any, Optional
 
+from browser_use import BrowserSession
 from browser_use.browser.profile import ProxySettings
 from fastmcp import FastMCP
 from mcp_browser_use.agent.custom_agent import CustomAgent
@@ -21,8 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Global references for single "running agent" approach
 _global_agent: Optional[CustomAgent] = None
-_global_browser: Optional[CustomBrowser] = None
-_global_page: Any | None = None
+_global_browser_session: Optional[BrowserSession] = None
 _global_agent_state: AgentState = AgentState()
 
 app = FastMCP("mcp_browser_use")
@@ -36,7 +36,7 @@ async def _cleanup_browser_resources() -> None:
 
     Need to add types.
     """
-    global _global_browser, _global_page, _global_agent_state, _global_agent
+    global _global_browser_session, _global_agent_state, _global_agent
 
     try:
         if _global_agent_state:
@@ -45,27 +45,18 @@ async def _cleanup_browser_resources() -> None:
             except Exception as stop_error:
                 logger.warning("Error stopping agent state: %s", stop_error)
 
-        if _global_page:
+        if _global_browser_session:
             try:
-                close = getattr(_global_page, "close", None)
-                if close:
-                    await close()
-            except Exception as page_error:
-                logger.warning("Error closing browser page: %s", page_error)
-
-        if _global_browser:
-            try:
-                await _global_browser.stop()
+                await _global_browser_session.kill()
             except Exception as browser_error:
-                logger.warning("Error stopping browser: %s", browser_error)
+                logger.warning("Error closing browser session: %s", browser_error)
 
     except Exception as e:
         # Log the error, but don't re-raise
         logger.error("Unexpected error during browser cleanup: %s", e)
     finally:
         # Reset global variables
-        _global_browser = None
-        _global_page = None
+        _global_browser_session = None
         _global_agent_state = AgentState()
         _global_agent = None
 
@@ -79,7 +70,8 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
     :param add_infos: Additional information or context for the agent.
     :return: The final result string from the agent run.
     """
-    global _global_agent, _global_browser, _global_page, _global_agent_state
+
+    global _global_agent, _global_browser_session, _global_agent_state
 
     try:
         # Clear any previous agent stop signals
@@ -137,6 +129,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
                 username=os.getenv("BROWSER_USE_PROXY_USERNAME"),
                 password=os.getenv("BROWSER_USE_PROXY_PASSWORD"),
             )
+            await _global_browser.start()
 
         allowed_domains_env = os.getenv("BROWSER_USE_ALLOWED_DOMAINS")
         allowed_domains = None
@@ -158,24 +151,18 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
 
         cdp_url = os.getenv("BROWSER_USE_CDP_URL") or None
 
-        # Create or reuse the global browser
-        if not _global_browser:
-            _global_browser = CustomBrowser(
+        # Create or reuse the global browser session
+        if not _global_browser_session:
+            _global_browser_session = BrowserSession(
                 headless=headless,
-                disable_security=(
-                    os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower()
-                    in {"1", "true", "yes", "on"}
-                ),
+                disable_security=os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower()
+                in {"1", "true", "yes", "on"},
                 executable_path=chrome_path,
                 args=extra_args,
                 proxy=proxy_settings,
                 allowed_domains=allowed_domains,
                 cdp_url=cdp_url,
             )
-            await _global_browser.start()
-
-        # Always create a fresh page for each request
-        _global_page = await _global_browser.new_page()
 
         # Create controller and agent
         controller = CustomController()
@@ -184,8 +171,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
             add_infos=add_infos,
             use_vision=use_vision,
             llm=llm,
-            browser=_global_browser,
-            browser_context=_global_page,
+            browser_session=_global_browser_session,
             controller=controller,
             max_actions_per_step=max_actions_per_step,
             tool_call_in_content=tool_call_in_content,

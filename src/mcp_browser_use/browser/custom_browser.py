@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 
-"""Backwards-compatible browser wrapper built on top of the modern Browser API.
+"""Backwards-compatible browser wrapper built on top of BrowserSession.
 
-This module previously provided a Playwright-based implementation that relied on
-``BrowserConfig`` objects. Since ``browser-use`` 0.7 the public API exposes a
-``Browser`` class directly, so we translate any legacy configuration into the
-new keyword arguments and provide a few helper aliases (``close`` and
-``new_context``) for code that still expects the older surface.
+This module previously provided a rich Playwright-based implementation. The
+latest versions of ``browser-use`` have consolidated this behavior inside the
+``BrowserSession`` class. To keep imports working for downstream users we map
+the legacy ``BrowserConfig`` style into the new ``BrowserSession`` constructor.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict
 
-from browser_use import Browser
+from browser_use import BrowserSession
 
 
 def _config_to_kwargs(config: Any | None) -> Dict[str, Any]:
-    """Translate legacy ``BrowserConfig`` objects into ``Browser`` kwargs."""
+    """Translate legacy ``BrowserConfig`` objects into BrowserSession kwargs."""
 
     if config is None:
         return {}
@@ -33,20 +32,10 @@ def _config_to_kwargs(config: Any | None) -> Dict[str, Any]:
     }
 
 
-class CustomBrowser(Browser):
-    """Thin wrapper around :class:`browser_use.Browser` for compatibility."""
+class CustomBrowser(BrowserSession):
+    """Thin wrapper around :class:`browser_use.BrowserSession` for compatibility."""
 
     def __init__(self, config: Any | None = None, **kwargs: Any) -> None:
-        normalized_kwargs = {k: v for k, v in _config_to_kwargs(config).items() if v is not None}
-        normalized_kwargs.update({k: v for k, v in kwargs.items() if v is not None})
-        super().__init__(**normalized_kwargs)
-
-    async def close(self) -> None:
-        """Alias for :meth:`Browser.stop` kept for backwards compatibility."""
-
-        await self.stop()
-
-    async def new_context(self, *args: Any, **kwargs: Any) -> Any:
-        """Alias for :meth:`Browser.new_page` for backwards compatibility."""
-
-        return await super().new_page(*args, **kwargs)
+        session_kwargs = {k: v for k, v in _config_to_kwargs(config).items() if v is not None}
+        session_kwargs.update({k: v for k, v in kwargs.items() if v is not None})
+        super().__init__(**session_kwargs)

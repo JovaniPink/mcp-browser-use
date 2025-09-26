@@ -18,6 +18,7 @@ from browser_use.agent.views import (
     AgentOutput,
     AgentHistory,
 )
+from browser_use import BrowserSession
 from browser_use.browser.views import BrowserStateHistory
 from browser_use.controller.service import Controller
 from browser_use.telemetry.views import AgentEndTelemetryEvent, AgentRunTelemetryEvent
@@ -47,8 +48,8 @@ class CustomAgent(Agent):
         task: str,
         llm: BaseChatModel,
         add_infos: str = "",
-        browser_session: Optional[Any] = None,
-        browser: Optional[Any] = None,
+        browser_session: Optional[BrowserSession] = None,
+        browser: Optional[BrowserSession] = None,
         browser_context: Optional[Any] = None,
         controller: Optional[Controller] = None,
         use_vision: bool = True,

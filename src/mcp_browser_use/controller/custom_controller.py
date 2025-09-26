@@ -4,6 +4,7 @@ import logging
 import sys
 
 import pyperclip
+from browser_use import BrowserSession
 from browser_use.agent.views import ActionResult
 from browser_use.browser.events import SendKeysEvent
 from browser_use.controller.service import Controller
@@ -41,7 +42,7 @@ class CustomController(Controller):
                 return ActionResult(error=str(e), extracted_content=None)
 
         @self.registry.action("Paste text from clipboard", requires_browser=True)
-        async def paste_from_clipboard(browser_session: Any) -> ActionResult:
+        async def paste_from_clipboard(browser_session: BrowserSession) -> ActionResult:
             """
             Paste whatever is currently in the system's clipboard
             into the active browser page by simulating keyboard typing.
@@ -54,11 +55,7 @@ class CustomController(Controller):
 
             try:
                 modifier = "meta" if sys.platform == "darwin" else "ctrl"
-                event_bus = getattr(browser_session, "event_bus", None)
-                if event_bus is None:
-                    raise AttributeError("Browser page does not expose an event_bus")
-
-                event = event_bus.dispatch(
+                event = browser_session.event_bus.dispatch(
                     SendKeysEvent(keys=f"{modifier}+v")
                 )
                 await event

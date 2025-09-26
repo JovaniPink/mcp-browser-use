@@ -54,6 +54,16 @@ class BrowserProfile:  # pragma: no cover - stub class
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+        self.event_bus = _DummyEventBus()
+
+    async def kill(self) -> None:  # pragma: no cover - stub method
+        return None
+
+
+class BrowserProfile:  # pragma: no cover - stub class
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class ProxySettings:  # pragma: no cover - stub class
@@ -63,13 +73,4 @@ class ProxySettings:  # pragma: no cover - stub class
 
 
 # Alias maintained for compatibility with production package
-BrowserSession = Browser
-
-
-__all__ = [
-    "Browser",
-    "BrowserSession",
-    "BrowserProfile",
-    "BrowserPage",
-    "ProxySettings",
-]
+Browser = BrowserSession
