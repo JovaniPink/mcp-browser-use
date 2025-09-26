@@ -6,9 +6,7 @@ import sys
 import pyperclip
 from browser_use import BrowserSession
 from browser_use.agent.views import ActionResult
-from browser_use.browser.events import SendKeysEvent
 from browser_use.controller.service import Controller
-from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +43,7 @@ class CustomController(Controller):
         async def paste_from_clipboard(browser_session: BrowserSession) -> ActionResult:
             """
             Paste whatever is currently in the system's clipboard
-            into the active browser page by simulating keyboard typing.
+            into the active browser page by using the send_keys tool.
             """
             try:
                 text = pyperclip.paste()
@@ -55,10 +53,12 @@ class CustomController(Controller):
 
             try:
                 modifier = "meta" if sys.platform == "darwin" else "ctrl"
-                event = browser_session.event_bus.dispatch(
-                    SendKeysEvent(keys=f"{modifier}+v")
+                # Use the documented tool via the registry
+                await self.registry.execute_action(
+                    "send_keys",
+                    {"keys": f"{modifier}+v"},
+                    browser_session=browser_session,
                 )
-                await event
                 logger.debug("Triggered paste shortcut inside the browser session.")
                 return ActionResult(extracted_content=text)
             except Exception as e:
