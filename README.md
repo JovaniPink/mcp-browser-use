@@ -71,7 +71,7 @@ Once the server is running you can register it inside Claude Desktop, for exampl
 "mcpServers": {
   "mcp_server_browser_use": {
     "command": "uvx",
-    "args": ["mcp-server-browser-use"],
+    "args": ["mcp-browser-use"],
     "env": {
       "MCP_MODEL_PROVIDER": "anthropic",
       "MCP_MODEL_NAME": "claude-3-5-sonnet-20241022"
