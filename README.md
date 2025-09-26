@@ -36,22 +36,22 @@ This repository contains the server for the [browser-use](https://github.com/bro
 
 This project relies on the following Python packages:
 
-| Package                                    | Version    | Description                                                                                                                                                                                                   |
-| :----------------------------------------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [Pillow](https://python-pillow.org/)      | >=10.1.0  | Python Imaging Library (PIL) fork that adds image processing capabilities to your Python interpreter.                                                                                                        |
-| [browser-use](https://github.com/browser-use/browser-use) | ==0.1.19  | A powerful browser automation system that enables AI agents to interact with web browsers through natural language. The core library that powers this project's browser automation capabilities.      |
-| [fastapi](https://fastapi.tiangolo.com/)    | >=0.115.6 | Modern, fast (high-performance) web framework for building APIs with Python 3.7+ based on standard Python type hints. Used to create the server that exposes the agent's functionality.                          |
-| [fastmcp](https://pypi.org/project/fastmcp/)    | >=0.4.1   | A framework that wraps FastAPI for building MCP (Model Context Protocol) servers.    |
-| [instructor](https://github.com/jxnl/instructor)   | >=1.7.2   | Library for structured output prompting and validation with OpenAI models. Enables extracting structured data from model responses.                                                                       |
-| [langchain](https://www.langchain.com/)     | >=0.3.14  | Framework for developing applications with large language models (LLMs). Provides tools for chaining together different language model components and interacting with various APIs and data sources.          |
-| [langchain-google-genai](https://pypi.org/project/langchain-google-genai/) | >=2.1.1   | LangChain integration for Google GenAI models, enabling the use of Google's generative AI capabilities within the LangChain framework. |
-| [langchain-openai](https://api.python.langchain.com/en/latest/langchain_openai.html) | >=0.2.14 | LangChain integrations with OpenAI's models. Enables using OpenAI models (like GPT-4) within the LangChain framework. Used in this project for interacting with OpenAI's language and vision models. |
-| [langchain-ollama](https://api.python.langchain.com/en/latest/langchain_ollama/chat_models/ChatOllama.html) | >=0.2.2   | Langchain integration for Ollama, enabling local execution of LLMs. |
-| [openai](https://platform.openai.com/docs/api-reference)    | >=1.59.5  | Official Python client library for the OpenAI API. Used to interact directly with OpenAI's models (if needed, in addition to LangChain).                                                                    |
-| [python-dotenv](https://pypi.org/project/python-dotenv/) | >=1.0.1   | Reads key-value pairs from a `.env` file and sets them as environment variables. Simplifies local development and configuration management.                                                                 |
-| [pydantic](https://docs.pydantic.dev/)       | >=2.10.5  | Data validation and settings management using Python type annotations. Provides runtime enforcement of types and automatic model creation. Essential for defining structured data models in the agent.        |
-| [pyperclip](https://pyperclip.readthedocs.io/)   | >=1.9.0   | Cross-platform Python module for copy and paste clipboard functions.                                                                                                                                  |
-| [uvicorn](https://www.uvicorn.org/)        | >=0.22.0  | ASGI web server implementation for Python. Used to serve the FastAPI application.                                                                                                                           |
+| Package | Version | Description |
+| :-- | :-- | :-- |
+| [browser-use](https://github.com/browser-use/browser-use) | ==0.7.9 | Core browser automation library that powers agent interactions. |
+| [fastapi](https://fastapi.tiangolo.com/) | >=0.115.6 | High-performance web framework used by the MCP server. |
+| [fastmcp](https://pypi.org/project/fastmcp/) | >=0.4.1 | FastAPI wrapper for building Model Context Protocol (MCP) servers. |
+| [instructor](https://github.com/jxnl/instructor) | >=1.7.2 | Structured output prompting and validation utilities for LLMs. |
+| [langchain](https://www.langchain.com/) | >=0.3.14 | LLM orchestration framework used for toolchains and integrations. |
+| [langchain-google-genai](https://pypi.org/project/langchain-google-genai/) | >=2.1.1 | LangChain integration for Google GenAI models. |
+| [langchain-ollama](https://api.python.langchain.com/en/latest/langchain_ollama/chat_models/ChatOllama.html) | >=0.2.2 | LangChain integration for running Ollama models locally. |
+| [langchain-openai](https://api.python.langchain.com/en/latest/langchain_openai.html) | >=0.2.14 | LangChain integration for OpenAI chat and vision models. |
+| [openai](https://platform.openai.com/docs/api-reference) | >=1.59.5 | Official OpenAI Python client used alongside LangChain when needed. |
+| [Pillow](https://python-pillow.org/) | >=10.1.0 | Imaging library leveraged for screenshot handling and GIF creation. |
+| [pydantic](https://docs.pydantic.dev/) | >=2.10.5 | Data validation and settings management for agent models. |
+| [python-dotenv](https://pypi.org/project/python-dotenv/) | >=1.0.1 | Environment variable management during local development. |
+| [pyperclip](https://pyperclip.readthedocs.io/) | >=1.9.0 | Cross-platform clipboard utilities used by custom actions. |
+| [uvicorn](https://www.uvicorn.org/) | >=0.22.0 | ASGI server used to host the FastAPI application. |
 
 ## Components
 
@@ -64,6 +64,13 @@ The server implements a browser automation system with:
 - Agent-based interaction system with vision capabilities
 - Persistent state management
 - Customizable model settings
+
+### Custom Components
+
+- **CustomController** registers clipboard-friendly actions so agents can copy data into the OS clipboard or paste clipboard contents back into the active page when needed.【F:src/mcp_browser_use/controller/custom_controller.py†L13-L63】
+- **CustomAgent** can export its full browsing history as an annotated GIF, making it easy to review each step of an automation run visually.【F:src/mcp_browser_use/agent/custom_agent.py†L367-L520】
+- **CustomSystemPrompt** and **CustomAgentMessagePrompt** provide detailed output formatting rules, tailored memory handling, and prompt construction to guide the agent's reasoning and tool use.【F:src/mcp_browser_use/agent/custom_prompts.py†L13-L259】
+- **CustomMessageManager** (implemented in `custom_massage_manager.py`) manages message history, memory persistence, and example tool calls to keep the agent aligned with the expected response schema.【F:src/mcp_browser_use/agent/custom_massage_manager.py†L22-L126】
 
 ### Requirements
 
@@ -130,6 +137,16 @@ npx -y @smithery/cli install @JovaniPink/mcp-browser-use --client claude
 ```
 
 </details>
+
+## Running the MCP Server
+
+After installing dependencies (for example with `uv sync`), launch the server with:
+
+```bash
+uv run mcp-browser-use
+```
+
+The command invokes the `mcp-browser-use` console script defined in `pyproject.toml`, starting the FastMCP application with all custom components enabled.
 
 ### Environment Variables
 
