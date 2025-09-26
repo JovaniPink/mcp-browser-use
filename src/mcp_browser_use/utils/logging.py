@@ -20,9 +20,9 @@ def _resolve_level(level_name: Optional[str]) -> int:
         return int(level_name)
 
     resolved = logging.getLevelName(level_name.upper())
-    if resolved == level_name.upper():  # logging returns the input if unknown
-        return logging.INFO
-    return resolved  # type: ignore[return-value]
+    if isinstance(resolved, int):
+        return resolved
+    return logging.INFO
 
 
 def configure_logging() -> None:
