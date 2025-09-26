@@ -1,7 +1,7 @@
 [project]
 name = "mcp_browser_use"
 version = "0.1.0"
-description = "MCP server for browser-use"
+description = "This Python project is a FastAPI server implementing MCP Server protocol Browser automation via browser-use library."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -13,21 +13,21 @@ classifiers = [
 ]
 
 dependencies = [
-    "browser-use~=0.7.9",
-    "fastapi>=0.115.6",
-    "fastmcp>=0.4.1",
-    "instructor>=1.7.2",
-    "langchain>=0.3.14",
+    "pydantic>=2.11.9",
+    "uvicorn>=0.37.0",
+    "browser-use>=0.7.9",
+    "fastapi>=0.117.1",
+    "fastmcp>=2.12.4",
+    "instructor>=1.11.3",
+    "langchain>=0.3.27",
     "langchain-google-genai>=2.1.1",
+    "langchain-openai>=0.2.14",
     "langchain-anthropic>=0.3.20",
     "langchain-ollama>=0.2.2",
-    "langchain-openai>=0.2.14",
-    "Pillow>=10.1.0",
-    "python-dotenv>=1.0.1",
-    "pyperclip>=1.9.0",
-    "openai>=1.59.5",
-    "pydantic>=2.10.5",
-    "uvicorn>=0.22.0",
+    "openai>=1.109.1",
+    "pillow>=11.3.0",
+    "python-dotenv>=1.1.1",
+    "pyperclip>=1.11.0",
 ]
 
 [build-system]
