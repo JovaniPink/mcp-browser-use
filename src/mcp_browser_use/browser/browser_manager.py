@@ -127,10 +127,7 @@ class BrowserEnvironmentConfig:
             )
 
         cdp_url = os.getenv("BROWSER_USE_CDP_URL") or None
-        if not cdp_url and (
-            persistence.debugging_host is not None
-            or persistence.debugging_port is not None
-        ):
+        if not cdp_url and (persistence.debugging_host or persistence.debugging_port):
             host = persistence.debugging_host or "127.0.0.1"
             port = persistence.debugging_port or 9222
             cdp_url = f"http://{host}:{port}"
