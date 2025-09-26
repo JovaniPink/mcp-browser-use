@@ -76,8 +76,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
 
         # Create a fresh browser session for this run
         browser_session = create_browser_session()
-        if hasattr(browser_session, "start"):
-            await browser_session.start()
+        await browser_session.start()
 
         # Create controller and agent
         controller = CustomController()
