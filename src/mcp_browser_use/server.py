@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 
+from mcp_browser_use.utils.logging import configure_logging
+
+# It is critical to configure logging before any other modules are imported,
+# as they might initialize logging themselves.
+configure_logging()
+
 import asyncio
+import logging
 import os
 import sys
 import traceback
-import logging
 from typing import Any, Optional
 
 from browser_use import Browser
@@ -15,11 +21,6 @@ from mcp_browser_use.browser.browser_manager import create_browser_session
 from mcp_browser_use.utils import utils
 from mcp_browser_use.utils.agent_state import AgentState
 
-# Logging
-logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 app = FastMCP("mcp_browser_use")

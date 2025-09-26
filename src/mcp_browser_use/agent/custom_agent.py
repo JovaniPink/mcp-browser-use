@@ -33,12 +33,6 @@ from mcp_browser_use.utils.agent_state import AgentState
 from mcp_browser_use.agent.custom_massage_manager import CustomMassageManager
 from mcp_browser_use.agent.custom_views import CustomAgentOutput, CustomAgentStepInfo
 
-# Logging
-logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
-
 logger = logging.getLogger(__name__)
 
 
