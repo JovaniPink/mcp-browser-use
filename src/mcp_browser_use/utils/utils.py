@@ -114,14 +114,14 @@ def encode_image(img_path: Optional[str]) -> Optional[str]:
         return None
 
     try:
-        with open(img_path, "rb") as fin:
-            image_data = base64.b64encode(fin.read()).decode("utf-8")
+        with open(img_path, "rb") as image_file:
+            image_data = base64.b64encode(image_file.read()).decode("utf-8")
         return image_data
-    except FileNotFoundError as e:
-        logger.error(f"Image not found at path {img_path}: {e}")
+    except FileNotFoundError as error:
+        logger.error(f"Image not found at path {img_path}: {error}")
         raise
-    except Exception as e:
-        logger.error(f"Error encoding image at {img_path}: {e}")
+    except Exception as error:
+        logger.error(f"Error encoding image at {img_path}: {error}")
         raise
 
 
@@ -145,19 +145,21 @@ def get_latest_files(
 
     for file_type in file_types:
         try:
-            matches = list(Path(directory).rglob(f"*{file_type}"))
-            if matches:
+            matching_files = list(Path(directory).rglob(f"*{file_type}"))
+            if matching_files:
                 # Sort or use max() by modified time
-                latest = max(matches, key=lambda p: p.stat().st_mtime)
+                most_recent_file = max(matching_files, key=lambda path: path.stat().st_mtime)
                 # Check if file is not actively being written
-                if time.time() - latest.stat().st_mtime > 1.0:
-                    latest_files[file_type] = str(latest)
+                if time.time() - most_recent_file.stat().st_mtime > 1.0:
+                    latest_files[file_type] = str(most_recent_file)
                 else:
                     logger.debug(
-                        f"Skipping file {latest} - possibly still being written."
+                        f"Skipping file {most_recent_file} - possibly still being written."
                     )
-        except Exception as e:
-            logger.error(f"Error getting latest {file_type} file in '{directory}': {e}")
+        except Exception as error:
+            logger.error(
+                f"Error getting latest {file_type} file in '{directory}': {error}"
+            )
 
     return latest_files
 
@@ -183,21 +185,17 @@ async def capture_screenshot(browser_context) -> Optional[str]:
         return None
 
     # Find the first non-blank page
-    pages = playwright_context.pages
-    if not pages:
+    browser_pages = playwright_context.pages
+    if not browser_pages:
         logger.debug("No pages available in playwright_context.")
         return None
 
-    active_page = pages[0]
-    for page in pages:
-        if page.url != "about:blank":
-            active_page = page
-            break
+    active_page = next((page for page in browser_pages if page.url != "about:blank"), browser_pages[0])
 
     try:
         screenshot = await active_page.screenshot(type="jpeg", quality=75, scale="css")
-        encoded = base64.b64encode(screenshot).decode("utf-8")
-        return encoded
-    except Exception as e:
-        logger.error(f"Failed to capture screenshot: {e}")
+        encoded_screenshot = base64.b64encode(screenshot).decode("utf-8")
+        return encoded_screenshot
+    except Exception as error:
+        logger.error(f"Failed to capture screenshot: {error}")
         return None

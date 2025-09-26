@@ -39,7 +39,8 @@ logger = logging.getLogger(__name__)
 class CustomAgent(Agent):
     """
     An AI-driven Agent that uses a language model to determine browser actions,
-    interacts with a BrowserSession, and manages conversation history and state.
+    interacts with a browser/page handle, and manages conversation history and
+    state.
     """
 
     def __init__(
@@ -79,9 +80,9 @@ class CustomAgent(Agent):
         :param task: Main instruction or goal for the agent.
         :param llm: The large language model (BaseChatModel) used for reasoning.
         :param add_infos: Additional information or context to pass to the agent.
-        :param browser_session: Optional BrowserSession instance.
-        :param browser: Backwards-compatible alias for browser_session.
-        :param browser_context: Deprecated legacy argument retained for compatibility.
+        :param browser_session: Optional browser/session instance (legacy name).
+        :param browser: Preferred browser object for ``browser-use`` >= 0.7.
+        :param browser_context: Optional active page/context to reuse.
         :param controller: Optional controller for handling multi-step actions. A new
             controller is created when not provided.
         :param use_vision: Whether to use vision-based element detection.
@@ -100,37 +101,61 @@ class CustomAgent(Agent):
         controller = controller or Controller()
         self.controller = controller
 
-        # Backwards compatibility for code that may still pass browser alias
-        if browser is not None and browser_session is not None:
-            logger.warning(
-                "Both 'browser_session' and 'browser' (alias) were provided. "
-                "'browser' will be ignored."
-            )
-        if browser_session is None:
-            browser_session = browser
+        browser_handle = browser or browser_session
+
+        init_kwargs: dict[str, Any] = {
+            "task": task,
+            "llm": llm,
+            "controller": controller,
+            "use_vision": use_vision,
+            "save_conversation_path": save_conversation_path,
+            "max_failures": max_failures,
+            "retry_delay": retry_delay,
+            "system_prompt_class": system_prompt_class,
+            "max_input_tokens": max_input_tokens,
+            "validate_output": validate_output,
+            "include_attributes": include_attributes,
+            "max_error_length": max_error_length,
+            "max_actions_per_step": max_actions_per_step,
+            "tool_call_in_content": tool_call_in_content,
+        }
+
+        if browser_handle is not None:
+            init_kwargs["browser"] = browser_handle
 
         if browser_context is not None:
-            logger.debug(
-                "browser_context argument is deprecated and ignored in CustomAgent"
-            )
+            init_kwargs["page"] = browser_context
 
-        super().__init__(
-            task=task,
-            llm=llm,
-            browser_session=browser_session,
-            controller=controller,
-            use_vision=use_vision,
-            save_conversation_path=save_conversation_path,
-            max_failures=max_failures,
-            retry_delay=retry_delay,
-            system_prompt_class=system_prompt_class,
-            max_input_tokens=max_input_tokens,
-            validate_output=validate_output,
-            include_attributes=include_attributes,
-            max_error_length=max_error_length,
-            max_actions_per_step=max_actions_per_step,
-            tool_call_in_content=tool_call_in_content,
-        )
+        for _ in range(4):
+            try:
+                super().__init__(**init_kwargs)
+                break
+            except TypeError as exc:  # pragma: no cover - defensive compatibility
+                message = str(exc)
+                if "unexpected keyword argument 'browser'" in message and "browser" in init_kwargs:
+                    browser_value = init_kwargs.pop("browser")
+                    if browser_value is not None:
+                        init_kwargs.setdefault("browser_session", browser_value)
+                    continue
+                if "unexpected keyword argument 'browser_session'" in message and "browser_session" in init_kwargs:
+                    browser_value = init_kwargs.pop("browser_session")
+                    if browser_value is not None:
+                        init_kwargs.setdefault("browser", browser_value)
+                    continue
+                if "unexpected keyword argument 'page'" in message and "page" in init_kwargs:
+                    init_kwargs.pop("page")
+                    continue
+                if "unexpected keyword argument 'controller'" in message and "controller" in init_kwargs:
+                    controller_value = init_kwargs.pop("controller")
+                    init_kwargs.setdefault("tools", controller_value)
+                    continue
+                if "unexpected keyword argument 'tools'" in message and "tools" in init_kwargs:
+                    controller_value = init_kwargs.pop("tools")
+                    init_kwargs.setdefault("controller", controller_value)
+                    continue
+                raise
+        else:  # pragma: no cover - should never happen
+            raise TypeError("Unable to initialise base Agent with provided arguments")
         self.add_infos = add_infos
         self.agent_state = agent_state
 
@@ -378,10 +403,12 @@ class CustomAgent(Agent):
             logger.debug(f"Full traceback: {traceback.format_exc()}")
             return False
 
-    @time_execution_async("--step")
-    async def step(self, step_info: Optional[CustomAgentStepInfo] = None) -> None:
+    @time_execution_async("--execute-agent-step")
+    async def execute_agent_step(
+        self, step_info: Optional[CustomAgentStepInfo] = None
+    ) -> None:
         """
-        Execute one step of the task:
+        Execute a single agent step of the task:
         1) Capture browser state
         2) Query LLM for next action
         3) Execute that action(s)
@@ -719,10 +746,10 @@ class CustomAgent(Agent):
         image.alpha_composite(overlay)
         return image.convert("RGB")
 
-    async def run(self, max_steps: int = 100) -> AgentHistoryList:
+    async def execute_agent_task(self, max_steps: int = 100) -> AgentHistoryList:
         """
-        Execute the entire task for up to max_steps or until 'done'.
-        Checks for external stop signals, logs each step in self.history.
+        Execute the entire agent task for up to max_steps or until 'done'.
+        Checks for external stop signals and logs each step in self.history.
         """
         try:
             logger.info(f"🚀 Starting task: {self.task}")
@@ -760,8 +787,8 @@ class CustomAgent(Agent):
                 if self._too_many_failures():
                     break
 
-                # 4) Execute one step
-                await self.step(step_info)
+                # 4) Execute one detailed agent step
+                await self.execute_agent_step(step_info)
 
                 if self.history.is_done():
                     if self.validate_output and step < max_steps - 1:

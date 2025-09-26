@@ -8,6 +8,7 @@ from browser_use import BrowserSession
 from browser_use.agent.views import ActionResult
 from browser_use.browser.events import SendKeysEvent
 from browser_use.controller.service import Controller
+from typing import Any
 
 
 logger = logging.getLogger(__name__)

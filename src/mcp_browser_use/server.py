@@ -5,15 +5,14 @@ import os
 import sys
 import traceback
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from browser_use import BrowserSession
 from browser_use.browser.profile import ProxySettings
 from fastmcp import FastMCP
-from mcp.types import TextContent
-
 from mcp_browser_use.agent.custom_agent import CustomAgent
 from mcp_browser_use.controller.custom_controller import CustomController
+from mcp_browser_use.browser.custom_browser import CustomBrowser
 from mcp_browser_use.utils import utils
 from mcp_browser_use.utils.agent_state import AgentState
 
@@ -71,6 +70,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
     :param add_infos: Additional information or context for the agent.
     :return: The final result string from the agent run.
     """
+
     global _global_agent, _global_browser_session, _global_agent_state
 
     try:
@@ -129,6 +129,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
                 username=os.getenv("BROWSER_USE_PROXY_USERNAME"),
                 password=os.getenv("BROWSER_USE_PROXY_PASSWORD"),
             )
+            await _global_browser.start()
 
         allowed_domains_env = os.getenv("BROWSER_USE_ALLOWED_DOMAINS")
         allowed_domains = None
@@ -177,8 +178,8 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
             agent_state=_global_agent_state,
         )
 
-        # Run agent
-        history = await _global_agent.run(max_steps=max_steps)
+        # Execute the agent task lifecycle
+        history = await _global_agent.execute_agent_task(max_steps=max_steps)
 
         # Extract final result from the agent's history
         final_result = history.final_result()
@@ -196,7 +197,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
         await _cleanup_browser_resources()
 
 
-def main() -> None:
+def launch_mcp_browser_use_server() -> None:
     """
     Entry point for running the FastMCP application.
     Handles server start and final resource cleanup.
@@ -217,4 +218,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    launch_mcp_browser_use_server()
