@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
+from browser_use.browser.events import ScreenshotEvent
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
@@ -179,40 +180,18 @@ def get_latest_files(
     return latest_files
 
 
-async def capture_screenshot(browser_context) -> Optional[str]:
-    """
-    Capture a screenshot of the first open page (not 'about:blank') in the browser_context,
-    returning a base64-encoded string, or None if no page is available.
+async def capture_screenshot(browser_session) -> Optional[str]:
+    """Capture a screenshot of the current page using the browser-use event bus."""
 
-    :param browser_context: The browser context which should hold a reference to the playwright browser.
-    :return: Base64-encoded JPEG screenshot or None on failure.
-    """
-    playwright_browser = getattr(browser_context.browser, "playwright_browser", None)
-
-    if not playwright_browser or not playwright_browser.contexts:
-        logger.debug("No available playwright_browser or contexts.")
+    if not hasattr(browser_session, "event_bus"):
+        logger.error("Browser session does not have an event_bus.")
         return None
-
-    # Use the first Playwright context
-    playwright_context = playwright_browser.contexts[0]
-    if not playwright_context:
-        logger.debug("No valid playwright_context found.")
-        return None
-
-    # Find the first non-blank page
-    browser_pages = playwright_context.pages
-    if not browser_pages:
-        logger.debug("No pages available in playwright_context.")
-        return None
-
-    active_page = next(
-        (page for page in browser_pages if page.url != "about:blank"), browser_pages[0]
-    )
 
     try:
-        screenshot = await active_page.screenshot(type="jpeg", quality=75, scale="css")
-        encoded_screenshot = base64.b64encode(screenshot).decode("utf-8")
-        return encoded_screenshot
+        event = browser_session.event_bus.dispatch(ScreenshotEvent(full_page=False))
+        await event
+        result = await event.event_result(raise_if_any=True, raise_if_none=True)
+        return result
     except Exception as error:
-        logger.error(f"Failed to capture screenshot: {error}")
+        logger.error(f"Failed to capture screenshot via event bus: {error}")
         return None
