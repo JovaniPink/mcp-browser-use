@@ -50,6 +50,11 @@ class Browser:
         return await self.stop()
 
 
+class BrowserSession(Browser):  # pragma: no cover - stub class
+    async def kill(self):  # pragma: no cover - stub method
+        return await self.stop()
+
+
 class BrowserProfile:  # pragma: no cover - stub class
     def __init__(self, **kwargs):
         for key, value in kwargs.items():

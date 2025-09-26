@@ -8,11 +8,10 @@ import logging
 from typing import Any, Optional
 
 from browser_use import BrowserSession
-from browser_use.browser.profile import ProxySettings
 from fastmcp import FastMCP
 from mcp_browser_use.agent.custom_agent import CustomAgent
 from mcp_browser_use.controller.custom_controller import CustomController
-from mcp_browser_use.browser.custom_browser import CustomBrowser
+from mcp_browser_use.browser.browser_manager import create_browser_session
 from mcp_browser_use.utils import utils
 from mcp_browser_use.utils.agent_state import AgentState
 
@@ -112,57 +111,9 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
             provider=model_provider, model_name=model_name, temperature=temperature
         )
 
-        # Get path to the Chrome/Chromium binary if provided
-        chrome_path = os.getenv("CHROME_PATH") or None
-
-        # Determine headless mode with backward-compatible defaults
-        headless_env = os.getenv("BROWSER_USE_HEADLESS", "false").lower()
-        headless = headless_env in {"1", "true", "yes", "on"}
-
-        # Optional proxy configuration
-        proxy_settings: ProxySettings | None = None
-        proxy_url = os.getenv("BROWSER_USE_PROXY_URL")
-        if proxy_url:
-            proxy_settings = ProxySettings(
-                server=proxy_url,
-                bypass=os.getenv("BROWSER_USE_NO_PROXY"),
-                username=os.getenv("BROWSER_USE_PROXY_USERNAME"),
-                password=os.getenv("BROWSER_USE_PROXY_PASSWORD"),
-            )
-            await _global_browser.start()
-
-        allowed_domains_env = os.getenv("BROWSER_USE_ALLOWED_DOMAINS")
-        allowed_domains = None
-        if allowed_domains_env:
-            allowed_domains = [
-                domain.strip()
-                for domain in allowed_domains_env.split(",")
-                if domain.strip()
-            ]
-
-        extra_args_env = os.getenv("BROWSER_USE_EXTRA_CHROMIUM_ARGS")
-        extra_args = None
-        if extra_args_env:
-            extra_args = [
-                arg.strip()
-                for arg in extra_args_env.split(",")
-                if arg.strip()
-            ]
-
-        cdp_url = os.getenv("BROWSER_USE_CDP_URL") or None
-
         # Create or reuse the global browser session
         if not _global_browser_session:
-            _global_browser_session = BrowserSession(
-                headless=headless,
-                disable_security=os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower()
-                in {"1", "true", "yes", "on"},
-                executable_path=chrome_path,
-                args=extra_args,
-                proxy=proxy_settings,
-                allowed_domains=allowed_domains,
-                cdp_url=cdp_url,
-            )
+            _global_browser_session = create_browser_session()
 
         # Create controller and agent
         controller = CustomController()
