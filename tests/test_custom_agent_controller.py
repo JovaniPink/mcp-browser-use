@@ -39,7 +39,9 @@ def custom_agent(monkeypatch):
     return custom_agent_module
 
 
-def test_custom_agent_creates_independent_default_controllers(custom_agent, monkeypatch):
+def test_custom_agent_creates_independent_default_controllers(
+    custom_agent, monkeypatch
+):
     controllers = []
 
     class TrackingController(custom_agent.Controller):

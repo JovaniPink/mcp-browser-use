@@ -65,7 +65,8 @@ def _azure_openai_params(kwargs: Dict[str, Any]) -> Dict[str, Any]:
         "model": kwargs.get("model_name", "gpt-4o"),
         "temperature": kwargs.get("temperature", 0.0),
         "api_version": kwargs.get("api_version", "2024-05-01-preview"),
-        "azure_endpoint": kwargs.get("base_url") or os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+        "azure_endpoint": kwargs.get("base_url")
+        or os.getenv("AZURE_OPENAI_ENDPOINT", ""),
         "api_key": kwargs.get("api_key") or os.getenv("AZURE_OPENAI_API_KEY", ""),
     }
 
@@ -160,7 +161,9 @@ def get_latest_files(
             matching_files = list(Path(directory).rglob(f"*{file_type}"))
             if matching_files:
                 # Sort or use max() by modified time
-                most_recent_file = max(matching_files, key=lambda path: path.stat().st_mtime)
+                most_recent_file = max(
+                    matching_files, key=lambda path: path.stat().st_mtime
+                )
                 # Check if file is not actively being written
                 if time.time() - most_recent_file.stat().st_mtime > 1.0:
                     latest_files[file_type] = str(most_recent_file)
@@ -202,7 +205,9 @@ async def capture_screenshot(browser_context) -> Optional[str]:
         logger.debug("No pages available in playwright_context.")
         return None
 
-    active_page = next((page for page in browser_pages if page.url != "about:blank"), browser_pages[0])
+    active_page = next(
+        (page for page in browser_pages if page.url != "about:blank"), browser_pages[0]
+    )
 
     try:
         screenshot = await active_page.screenshot(type="jpeg", quality=75, scale="css")

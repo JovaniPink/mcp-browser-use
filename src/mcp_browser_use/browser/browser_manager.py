@@ -34,7 +34,9 @@ class BrowserPersistenceConfig:
 
     @classmethod
     def from_env(cls) -> "BrowserPersistenceConfig":
-        persistent_session = os.getenv("CHROME_PERSISTENT_SESSION", "").lower() in _BOOL_TRUE
+        persistent_session = (
+            os.getenv("CHROME_PERSISTENT_SESSION", "").lower() in _BOOL_TRUE
+        )
         user_data_dir = os.getenv("CHROME_USER_DATA") or None
 
         debugging_port: Optional[int]
@@ -95,7 +97,9 @@ class BrowserEnvironmentConfig:
         persistence = BrowserPersistenceConfig.from_env()
 
         headless = os.getenv("BROWSER_USE_HEADLESS", "false").lower() in _BOOL_TRUE
-        disable_security = os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower() in _BOOL_TRUE
+        disable_security = (
+            os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower() in _BOOL_TRUE
+        )
         executable_path = os.getenv("CHROME_PATH") or None
 
         extra_args_env = os.getenv("BROWSER_USE_EXTRA_CHROMIUM_ARGS")
@@ -145,7 +149,9 @@ class BrowserEnvironmentConfig:
         )
 
 
-def create_browser_session(overrides: Optional[Dict[str, Any]] = None) -> BrowserSession:
+def create_browser_session(
+    overrides: Optional[Dict[str, Any]] = None,
+) -> BrowserSession:
     """Instantiate a :class:`BrowserSession` using environment defaults.
 
     ``overrides`` can be supplied to fine-tune the resulting session.  Any keys
@@ -164,5 +170,8 @@ def create_browser_session(overrides: Optional[Dict[str, Any]] = None) -> Browse
                 # fall back to its internal default.
                 kwargs.pop(key)
 
-    logger.debug("Creating BrowserSession with kwargs: %s", {k: v for k, v in kwargs.items() if k != "proxy"})
+    logger.debug(
+        "Creating BrowserSession with kwargs: %s",
+        {k: v for k, v in kwargs.items() if k != "proxy"},
+    )
     return BrowserSession(**kwargs)
