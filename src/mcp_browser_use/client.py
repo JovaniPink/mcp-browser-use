@@ -53,9 +53,7 @@ async def create_client_session(
         )
 
     if client_factory is not None and client_kwargs:
-        raise ValueError(
-            "'client_kwargs' cannot be combined with 'client_factory'."
-        )
+        raise ValueError("'client_kwargs' cannot be combined with 'client_factory'.")
 
     if client is not None:
         session_client = client

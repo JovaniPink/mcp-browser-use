@@ -132,24 +132,39 @@ class CustomAgent(Agent):
                 break
             except TypeError as exc:  # pragma: no cover - defensive compatibility
                 message = str(exc)
-                if "unexpected keyword argument 'browser'" in message and "browser" in init_kwargs:
+                if (
+                    "unexpected keyword argument 'browser'" in message
+                    and "browser" in init_kwargs
+                ):
                     browser_value = init_kwargs.pop("browser")
                     if browser_value is not None:
                         init_kwargs.setdefault("browser_session", browser_value)
                     continue
-                if "unexpected keyword argument 'browser_session'" in message and "browser_session" in init_kwargs:
+                if (
+                    "unexpected keyword argument 'browser_session'" in message
+                    and "browser_session" in init_kwargs
+                ):
                     browser_value = init_kwargs.pop("browser_session")
                     if browser_value is not None:
                         init_kwargs.setdefault("browser", browser_value)
                     continue
-                if "unexpected keyword argument 'page'" in message and "page" in init_kwargs:
+                if (
+                    "unexpected keyword argument 'page'" in message
+                    and "page" in init_kwargs
+                ):
                     init_kwargs.pop("page")
                     continue
-                if "unexpected keyword argument 'controller'" in message and "controller" in init_kwargs:
+                if (
+                    "unexpected keyword argument 'controller'" in message
+                    and "controller" in init_kwargs
+                ):
                     controller_value = init_kwargs.pop("controller")
                     init_kwargs.setdefault("tools", controller_value)
                     continue
-                if "unexpected keyword argument 'tools'" in message and "tools" in init_kwargs:
+                if (
+                    "unexpected keyword argument 'tools'" in message
+                    and "tools" in init_kwargs
+                ):
                     controller_value = init_kwargs.pop("tools")
                     init_kwargs.setdefault("controller", controller_value)
                     continue
@@ -395,7 +410,9 @@ class CustomAgent(Agent):
             logger.debug(f"Generated summary: {summary_message}")
 
             self.message_manager.reset_history()
-            self.message_manager._add_message_with_tokens(summary_message)  # Consider creating a public method for this
+            self.message_manager._add_message_with_tokens(
+                summary_message
+            )  # Consider creating a public method for this
             return True
 
         except Exception as e:
@@ -597,15 +614,15 @@ class CustomAgent(Agent):
         """Return an image with the task text overlaid on the screenshot."""
 
         margin = 40
-        img = Image.open(io.BytesIO(base64.b64decode(screenshot_b64))).convert(
-            "RGBA"
-        )
+        img = Image.open(io.BytesIO(base64.b64decode(screenshot_b64))).convert("RGBA")
 
         overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
 
         max_width = img.width - margin * 2
-        text_lines: list[str] = self._wrap_text_to_lines(draw, task_text, regular_font, max_width)
+        text_lines: list[str] = self._wrap_text_to_lines(
+            draw, task_text, regular_font, max_width
+        )
 
         y = margin
         title_bbox = draw.textbbox((margin, y), "Task", font=title_font)
