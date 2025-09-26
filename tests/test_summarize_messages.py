@@ -12,8 +12,7 @@ class FakeLLM:
 
     def invoke(self, input, **kwargs):
         self.calls.append(input)
-        message = AIMessage()
-        message.content = self._content
+        message = AIMessage(content=self._content)
         return message
 
     def __call__(self, input, **kwargs):
@@ -22,17 +21,14 @@ class FakeLLM:
 
 class DummyMessageManager:
     def __init__(self, extra_messages: int = 6):
-        self.system_prompt = SystemMessage()
-        self.system_prompt.content = "System instructions"
-        self.example_tool_call = AIMessage()
-        self.example_tool_call.content = "[]"
+        self.system_prompt = SystemMessage(content="System instructions")
+        self.example_tool_call = AIMessage(content="[]")
         self.example_tool_call.tool_calls = []
         self.reset_calls = 0
         self.history = MessageHistory()
         self.reset_history()
         for idx in range(extra_messages):
-            human = HumanMessage()
-            human.content = f"User message {idx}"
+            human = HumanMessage(content=f"User message {idx}")
             self._add_message_with_tokens(human)
 
     def get_messages(self):
