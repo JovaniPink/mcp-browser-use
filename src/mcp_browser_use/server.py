@@ -7,7 +7,7 @@ import traceback
 import logging
 from typing import Any, Optional
 
-from browser_use import BrowserSession
+from browser_use import Browser
 from fastmcp import FastMCP
 from mcp_browser_use.agent.custom_agent import CustomAgent
 from mcp_browser_use.controller.custom_controller import CustomController
@@ -32,7 +32,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
     :return: The final result string from the agent run.
     """
 
-    browser_session: Optional[BrowserSession] = None
+    browser_session: Optional[Browser] = None
     agent_state = AgentState()
 
     try:
@@ -76,6 +76,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
 
         # Create a fresh browser session for this run
         browser_session = create_browser_session()
+        await browser_session.start()
 
         # Create controller and agent
         controller = CustomController()
@@ -114,9 +115,14 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
 
         if browser_session:
             try:
-                await browser_session.kill()
+                await browser_session.stop()
             except Exception as browser_error:
-                logger.warning("Error closing browser session: %s", browser_error)
+                logger.warning(
+                    "Failed to stop browser session gracefully, killing it: %s",
+                    browser_error,
+                )
+                if hasattr(browser_session, "kill"):
+                    await browser_session.kill()
 
 
 def launch_mcp_browser_use_server() -> None:
