@@ -18,8 +18,6 @@ from browser_use.agent.views import (
     AgentOutput,
     AgentHistory,
 )
-from browser_use.browser.browser import Browser
-from browser_use.browser.context import BrowserContext
 from browser_use.browser.views import BrowserStateHistory
 from browser_use.controller.service import Controller
 from browser_use.telemetry.views import AgentEndTelemetryEvent, AgentRunTelemetryEvent
@@ -40,7 +38,8 @@ logger = logging.getLogger(__name__)
 class CustomAgent(Agent):
     """
     An AI-driven Agent that uses a language model to determine browser actions,
-    interacts with a BrowserContext, and manages conversation history and state.
+    interacts with a browser/page handle, and manages conversation history and
+    state.
     """
 
     def __init__(
@@ -48,8 +47,9 @@ class CustomAgent(Agent):
         task: str,
         llm: BaseChatModel,
         add_infos: str = "",
-        browser: Optional[Browser] = None,
-        browser_context: Optional[BrowserContext] = None,
+        browser_session: Optional[Any] = None,
+        browser: Optional[Any] = None,
+        browser_context: Optional[Any] = None,
         controller: Optional[Controller] = None,
         use_vision: bool = True,
         save_conversation_path: Optional[str] = None,
@@ -79,8 +79,9 @@ class CustomAgent(Agent):
         :param task: Main instruction or goal for the agent.
         :param llm: The large language model (BaseChatModel) used for reasoning.
         :param add_infos: Additional information or context to pass to the agent.
-        :param browser: Optional Browser instance.
-        :param browser_context: Optional BrowserContext to share state.
+        :param browser_session: Optional browser/session instance (legacy name).
+        :param browser: Preferred browser object for ``browser-use`` >= 0.7.
+        :param browser_context: Optional active page/context to reuse.
         :param controller: Optional controller for handling multi-step actions. A new
             controller is created when not provided.
         :param use_vision: Whether to use vision-based element detection.
@@ -99,24 +100,61 @@ class CustomAgent(Agent):
         controller = controller or Controller()
         self.controller = controller
 
-        super().__init__(
-            task=task,
-            llm=llm,
-            browser=browser,
-            browser_context=browser_context,
-            controller=controller,
-            use_vision=use_vision,
-            save_conversation_path=save_conversation_path,
-            max_failures=max_failures,
-            retry_delay=retry_delay,
-            system_prompt_class=system_prompt_class,
-            max_input_tokens=max_input_tokens,
-            validate_output=validate_output,
-            include_attributes=include_attributes,
-            max_error_length=max_error_length,
-            max_actions_per_step=max_actions_per_step,
-            tool_call_in_content=tool_call_in_content,
-        )
+        browser_handle = browser or browser_session
+
+        init_kwargs: dict[str, Any] = {
+            "task": task,
+            "llm": llm,
+            "controller": controller,
+            "use_vision": use_vision,
+            "save_conversation_path": save_conversation_path,
+            "max_failures": max_failures,
+            "retry_delay": retry_delay,
+            "system_prompt_class": system_prompt_class,
+            "max_input_tokens": max_input_tokens,
+            "validate_output": validate_output,
+            "include_attributes": include_attributes,
+            "max_error_length": max_error_length,
+            "max_actions_per_step": max_actions_per_step,
+            "tool_call_in_content": tool_call_in_content,
+        }
+
+        if browser_handle is not None:
+            init_kwargs["browser"] = browser_handle
+
+        if browser_context is not None:
+            init_kwargs["page"] = browser_context
+
+        for _ in range(4):
+            try:
+                super().__init__(**init_kwargs)
+                break
+            except TypeError as exc:  # pragma: no cover - defensive compatibility
+                message = str(exc)
+                if "unexpected keyword argument 'browser'" in message and "browser" in init_kwargs:
+                    browser_value = init_kwargs.pop("browser")
+                    if browser_value is not None:
+                        init_kwargs.setdefault("browser_session", browser_value)
+                    continue
+                if "unexpected keyword argument 'browser_session'" in message and "browser_session" in init_kwargs:
+                    browser_value = init_kwargs.pop("browser_session")
+                    if browser_value is not None:
+                        init_kwargs.setdefault("browser", browser_value)
+                    continue
+                if "unexpected keyword argument 'page'" in message and "page" in init_kwargs:
+                    init_kwargs.pop("page")
+                    continue
+                if "unexpected keyword argument 'controller'" in message and "controller" in init_kwargs:
+                    controller_value = init_kwargs.pop("controller")
+                    init_kwargs.setdefault("tools", controller_value)
+                    continue
+                if "unexpected keyword argument 'tools'" in message and "tools" in init_kwargs:
+                    controller_value = init_kwargs.pop("tools")
+                    init_kwargs.setdefault("controller", controller_value)
+                    continue
+                raise
+        else:  # pragma: no cover - should never happen
+            raise TypeError("Unable to initialise base Agent with provided arguments")
         self.add_infos = add_infos
         self.agent_state = agent_state
 

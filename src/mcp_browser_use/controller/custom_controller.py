@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import sys
+
 import pyperclip
 from browser_use.agent.views import ActionResult
-from browser_use.browser.context import BrowserContext
+from browser_use.browser.events import SendKeysEvent
 from browser_use.controller.service import Controller
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +41,7 @@ class CustomController(Controller):
                 return ActionResult(error=str(e), extracted_content=None)
 
         @self.registry.action("Paste text from clipboard", requires_browser=True)
-        async def paste_from_clipboard(browser: BrowserContext) -> ActionResult:
+        async def paste_from_clipboard(browser_session: Any) -> ActionResult:
             """
             Paste whatever is currently in the system's clipboard
             into the active browser page by simulating keyboard typing.
@@ -50,14 +53,17 @@ class CustomController(Controller):
                 return ActionResult(error=str(e), extracted_content=None)
 
             try:
-                # Send text to browser
-                page = await browser.get_current_page()
-                if page is None:
-                    # It's possible there's no current page
-                    raise RuntimeError("No active browser page found.")
-                await page.keyboard.type(text)
-                logger.debug("Pasted text from clipboard into the browser.")
+                modifier = "meta" if sys.platform == "darwin" else "ctrl"
+                event_bus = getattr(browser_session, "event_bus", None)
+                if event_bus is None:
+                    raise AttributeError("Browser page does not expose an event_bus")
+
+                event = event_bus.dispatch(
+                    SendKeysEvent(keys=f"{modifier}+v")
+                )
+                await event
+                logger.debug("Triggered paste shortcut inside the browser session.")
                 return ActionResult(extracted_content=text)
             except Exception as e:
-                logger.error(f"Error pasting text into the browser: {e}")
+                logger.error(f"Error pasting text into the browser session: {e}")
                 return ActionResult(error=str(e), extracted_content=None)
