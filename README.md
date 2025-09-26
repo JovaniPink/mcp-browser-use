@@ -1,250 +1,123 @@
-# MCP server w/ Browser Use
+# MCP Browser Use Server
 
 [![smithery badge](https://smithery.ai/badge/@JovaniPink/mcp-browser-use)](https://smithery.ai/server/@JovaniPink/mcp-browser-use)
 
-> MCP server for [browser-use](https://github.com/browser-use/browser-use).
+> Model Context Protocol (MCP) server that wires [browser-use](https://github.com/browser-use/browser-use) into Claude Desktop and other MCP compatible clients.
 
 <a href="https://glama.ai/mcp/servers/tjea5rgnbv"><img width="380" height="200" src="https://glama.ai/mcp/servers/tjea5rgnbv/badge" alt="Browser Use Server MCP server" /></a>
 
 ## Overview
 
-This repository contains the server for the [browser-use](https://github.com/browser-use/browser-use) library, which provides a powerful browser automation system that enables AI agents to interact with web browsers through natural language. The server is built on Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) and provides a seamless integration with the [browser-use](https://github.com/browser-use/browser-use) library.
+This repository provides a production-ready wrapper around the `browser-use` automation engine. It exposes a single MCP tool (`run_browser_agent`) that orchestrates a browser session, executes the `browser-use` agent, and returns the final result back to the client. The refactored layout focuses on keeping configuration in one place, improving testability, and keeping `browser-use` upgrades isolated from MCP specific code.
 
-## Features
+### Key Capabilities
 
-1. **Browser Control**
+- **Automated browsing** – Navigate, interact with forms, control tabs, capture screenshots, and read page content through natural-language instructions executed by `browser-use`.
+- **Agent lifecycle management** – `CustomAgent` wraps `browser-use`'s base agent to add history export, richer prompts, and consistent error handling across runs.
+- **Centralised browser configuration** – `create_browser_session` translates environment variables into a ready-to-use `BrowserSession`, enabling persistent profiles, proxies, and custom Chromium flags without touching the agent logic.
+- **FastMCP integration** – `server.py` registers the MCP tool, normalises configuration, and ensures the browser session is always cleaned up.
+- **Client helpers** – `client.py` includes async helpers for tests or other Python processes that wish to exercise the MCP server in-process.
 
-- Automated browser interactions via natural language
-- Navigation, form filling, clicking, and scrolling capabilities
-- Tab management and screenshot functionality
-- Cookie and state management
+### Project Structure
 
-2. **Agent System**
+```
+.
+├── documentation/
+│   ├── CONFIGURATION.md      # Detailed configuration reference
+│   └── SECURITY.md           # Security considerations for running the server
+├── .env.example            # Example environment variables for local development
+├── src/mcp_browser_use/
+│   ├── agent/                # Custom agent, prompts, message history, and views
+│   ├── browser/              # Browser session factory and persistence helpers
+│   ├── controller/           # Custom controller extensions for clipboard actions
+│   ├── utils/                # LLM factory, agent state helpers, encoding utilities
+│   ├── client.py             # Async helper for connecting to the FastMCP app
+│   └── server.py             # FastMCP app and the `run_browser_agent` tool
+└── tests/                    # Unit tests covering server helpers and agent features
+```
 
-- Custom agent implementation in custom_agent.py
-- Vision-based element detection
-- Structured JSON responses for actions
-- Message history management and summarization
-
-3. **Configuration**
-
-- Environment-based configuration for API keys and settings
-- Chrome browser settings (debugging port, persistence)
-- Model provider selection and parameters
-
-## Dependencies
-
-This project relies on the following Python packages:
-
-| Package | Version | Description |
-| :-- | :-- | :-- |
-| [browser-use](https://github.com/browser-use/browser-use) | ==0.7.9 | Core browser automation library that powers agent interactions. |
-| [fastapi](https://fastapi.tiangolo.com/) | >=0.115.6 | High-performance web framework used by the MCP server. |
-| [fastmcp](https://pypi.org/project/fastmcp/) | >=0.4.1 | FastAPI wrapper for building Model Context Protocol (MCP) servers. |
-| [instructor](https://github.com/jxnl/instructor) | >=1.7.2 | Structured output prompting and validation utilities for LLMs. |
-| [langchain](https://www.langchain.com/) | >=0.3.14 | LLM orchestration framework used for toolchains and integrations. |
-| [langchain-google-genai](https://pypi.org/project/langchain-google-genai/) | >=2.1.1 | LangChain integration for Google GenAI models. |
-| [langchain-ollama](https://api.python.langchain.com/en/latest/langchain_ollama/chat_models/ChatOllama.html) | >=0.2.2 | LangChain integration for running Ollama models locally. |
-| [langchain-openai](https://api.python.langchain.com/en/latest/langchain_openai.html) | >=0.2.14 | LangChain integration for OpenAI chat and vision models. |
-| [openai](https://platform.openai.com/docs/api-reference) | >=1.59.5 | Official OpenAI Python client used alongside LangChain when needed. |
-| [Pillow](https://python-pillow.org/) | >=10.1.0 | Imaging library leveraged for screenshot handling and GIF creation. |
-| [pydantic](https://docs.pydantic.dev/) | >=2.10.5 | Data validation and settings management for agent models. |
-| [python-dotenv](https://pypi.org/project/python-dotenv/) | >=1.0.1 | Environment variable management during local development. |
-| [pyperclip](https://pyperclip.readthedocs.io/) | >=1.9.0 | Cross-platform clipboard utilities used by custom actions. |
-| [uvicorn](https://www.uvicorn.org/) | >=0.22.0 | ASGI server used to host the FastAPI application. |
-
-## Components
-
-### Resources
-
-The server implements a browser automation system with:
-
-- Integration with browser-use library for advanced browser control
-- Custom browser automation capabilities
-- Agent-based interaction system with vision capabilities
-- Persistent state management
-- Customizable model settings
-
-### Custom Components
-
-- **CustomController** registers clipboard-friendly actions so agents can copy data into the OS clipboard or paste clipboard contents back into the active page when needed.【F:src/mcp_browser_use/controller/custom_controller.py†L13-L63】
-- **CustomAgent** can export its full browsing history as an annotated GIF, making it easy to review each step of an automation run visually.【F:src/mcp_browser_use/agent/custom_agent.py†L367-L520】
-- **CustomSystemPrompt** and **CustomAgentMessagePrompt** provide detailed output formatting rules, tailored memory handling, and prompt construction to guide the agent's reasoning and tool use.【F:src/mcp_browser_use/agent/custom_prompts.py†L13-L259】
-- **CustomMessageManager** (implemented in `custom_massage_manager.py`) manages message history, memory persistence, and example tool calls to keep the agent aligned with the expected response schema.【F:src/mcp_browser_use/agent/custom_massage_manager.py†L22-L126】
+## Getting Started
 
 ### Requirements
 
-- Operating Systems (Linux, macOS, Windows; we haven't tested for Docker or Microsoft WSL)
-- Python 3.11 or higher
-- uv (fast Python package installer)
-- Chrome/Chromium browser
-- [Claude Desktop](https://claude.ai/download)
+- Python 3.11+
+- Google Chrome or Chromium (for local automation)
+- [`uv`](https://github.com/astral-sh/uv) for dependency management (recommended)
+- Optional: Claude Desktop or another MCP-compatible client for integration testing
 
-### Quick Start
-
-#### Claude Desktop
-
-On MacOS: `~/Library/Application\ Support/Claude/claude_desktop_config.json`
-On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
-
-#### Installing via Smithery
-
-To install Browser Use for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@JovaniPink/mcp-browser-use):
+### Installation
 
 ```bash
-npx -y @smithery/cli install @JovaniPink/mcp-browser-use --client claude
+git clone https://github.com/JovaniPink/mcp-browser-use.git
+cd mcp-browser-use
+uv sync
 ```
 
-<details>
-  <summary>Development Configuration</summary>
+Copy `sample.env` to `.env` (or export the variables in another way) and update the values for the providers you plan to use.
+
+### Launching the server
+
+```bash
+uv run mcp-browser-use
+```
+
+The command invokes the console script defined in `pyproject.toml`, starts the FastMCP application, and registers the `run_browser_agent` tool.
+
+#### Using with Claude Desktop
+
+Once the server is running you can register it inside Claude Desktop, for example:
 
 ```json
 "mcpServers": {
   "mcp_server_browser_use": {
     "command": "uvx",
-    "args": [
-      "mcp-server-browser-use",
-    ],
+    "args": ["mcp-browser-use"],
     "env": {
-      "OPENAI_ENDPOINT": "https://api.openai.com/v1",
-      "OPENAI_API_KEY": "",
-      "ANTHROPIC_API_KEY": "",
-      "GOOGLE_API_KEY": "",
-      "AZURE_OPENAI_ENDPOINT": "",
-      "AZURE_OPENAI_API_KEY": "",
-      // "DEEPSEEK_ENDPOINT": "https://api.deepseek.com",
-      // "DEEPSEEK_API_KEY": "",
-      // Set to false to disable anonymized telemetry
-      "ANONYMIZED_TELEMETRY": "false",
-      // Chrome settings
-      "CHROME_PATH": "",
-      "CHROME_USER_DATA": "",
-      "CHROME_DEBUGGING_PORT": "9222",
-      "CHROME_DEBUGGING_HOST": "localhost",
-      // Set to true to keep browser open between AI tasks
-      "CHROME_PERSISTENT_SESSION": "false",
-      // Model settings
       "MCP_MODEL_PROVIDER": "anthropic",
-      "MCP_MODEL_NAME": "claude-3-5-sonnet-20241022",
-      "MCP_TEMPERATURE": "0.3",
-      "MCP_MAX_STEPS": "30",
-      "MCP_USE_VISION": "true",
-      "MCP_MAX_ACTIONS_PER_STEP": "5",
-      "MCP_TOOL_CALL_IN_CONTENT": "true"
+      "MCP_MODEL_NAME": "claude-3-5-sonnet-20241022"
     }
   }
 }
 ```
 
-</details>
-
-## Running the MCP Server
-
-After installing dependencies (for example with `uv sync`), launch the server with:
-
-```bash
-uv run mcp-browser-use
-```
-
-The command invokes the `mcp-browser-use` console script defined in `pyproject.toml`, starting the FastMCP application with all custom components enabled.
-
-### Environment Variables
-
-Key environment variables:
-
-```bash
-# API Keys
-ANTHROPIC_API_KEY=anthropic_key
-
-# Chrome Configuration
-# Optional: Path to Chrome executable
-CHROME_PATH=/path/to/chrome
-# Optional: Chrome user data directory
-CHROME_USER_DATA=/path/to/user/data
-# Default: 9222
-CHROME_DEBUGGING_PORT=9222
-# Default: localhost
-CHROME_DEBUGGING_HOST=localhost
-# Keep browser open between tasks
-CHROME_PERSISTENT_SESSION=false
-
-# Model Settings
-# Options: anthropic, openai, azure, deepseek
-MCP_MODEL_PROVIDER=anthropic
-# Model name
-MCP_MODEL_NAME=claude-3-5-sonnet-20241022
-MCP_TEMPERATURE=0.3
-MCP_MAX_STEPS=30
-MCP_USE_VISION=true
-MCP_MAX_ACTIONS_PER_STEP=5
-```
-
-## Development
-
-### Setup
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/JovaniPink/mcp-browser-use.git
-cd mcp-browser-use
-```
-
-2. Create and activate virtual environment:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
-
-3. Install dependencies:
-
-```bash
-uv sync
-```
-
-4. Start the server
-
-```bash
-uv run mcp-browser-use
-```
-
 ### Debugging
 
-For debugging, use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector):
+For interactive debugging, use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector):
 
 ```bash
-npx @modelcontextprotocol/inspector uv --directory /path/to/project run mcp-server-browser-use
+npx @modelcontextprotocol/inspector uv --directory /path/to/project run mcp-browser-use
 ```
 
-The Inspector will display a URL for the debugging interface.
+The inspector prints a URL that can be opened in the browser to watch tool calls and responses in real time.
 
-## Browser Actions
+## Configuration
 
-The server supports various browser actions through natural language:
+A full list of environment variables and their defaults is available in [documentation/CONFIGURATION.md](documentation/CONFIGURATION.md). Highlights include:
 
-- Navigation: Go to URLs, back/forward, refresh
-- Interaction: Click, type, scroll, hover
-- Forms: Fill forms, submit, select options
-- State: Get page content, take screenshots
-- Tabs: Create, close, switch between tabs
-- Vision: Find elements by visual appearance
-- Cookies & Storage: Manage browser state
+- `MCP_MODEL_PROVIDER`, `MCP_MODEL_NAME`, `MCP_TEMPERATURE`, `MCP_MAX_STEPS`, `MCP_MAX_ACTIONS_PER_STEP`, and `MCP_USE_VISION` control the LLM and agent run.
+- Provider-specific API keys and endpoints (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_API_KEY`, `AZURE_OPENAI_API_KEY`, etc.).
+- Browser runtime flags (`BROWSER_USE_HEADLESS`, `BROWSER_USE_EXTRA_CHROMIUM_ARGS`, `CHROME_PERSISTENT_SESSION`, `BROWSER_USE_PROXY_URL`, ...).
+
+Use `.env` + [`python-dotenv`](https://pypi.org/project/python-dotenv/) or your preferred secrets manager to keep credentials out of source control.
+
+## Running Tests
+
+```bash
+uv run pytest
+```
+
+The tests cover the custom agent behaviour, browser session factory, and other utility helpers.
 
 ## Security
 
-I want to note that there are some Chrome settings that are set to allow for the browser to be controlled by the server. This is a security risk and should be used with caution. The server is not intended to be used in a production environment.
-
-Security Details: [SECURITY.MD](./documentation/SECURITY.md)
+Controlling a full browser instance remotely can grant broad access to the host machine. Review [documentation/SECURITY.md](documentation/SECURITY.md) before exposing the server to untrusted environments.
 
 ## Contributing
 
-We welcome contributions to this project. Please follow these steps:
+1. Fork the repository
+2. Create your feature branch: `git checkout -b my-new-feature`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin my-new-feature`
+5. Open a pull request
 
-1. Fork this repository.
-2. Create your feature branch: `git checkout -b my-new-feature`.
-3. Commit your changes: `git commit -m 'Add some feature'`.
-4. Push to the branch: `git push origin my-new-feature`.
-5. Submit a pull request.
-
-For major changes, open an issue first to discuss what you would like to change. Please update tests as appropriate to reflect any changes made.
+Bug reports and feature suggestions are welcome—please include logs and reproduction steps when applicable.
