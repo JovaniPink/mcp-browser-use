@@ -19,45 +19,7 @@ from mcp_browser_use.utils.agent_state import AgentState
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global references for single "running agent" approach
-_global_agent: Optional[CustomAgent] = None
-_global_browser_session: Optional[BrowserSession] = None
-_global_agent_state: AgentState = AgentState()
-
 app = FastMCP("mcp_browser_use")
-
-
-async def _cleanup_browser_resources() -> None:
-    """
-    Safely clean up browser resources and reset global references.
-    Any exceptions are logged and swallowed to ensure we attempt
-    as much cleanup as possible.
-
-    Need to add types.
-    """
-    global _global_browser_session, _global_agent_state, _global_agent
-
-    try:
-        if _global_agent_state:
-            try:
-                _global_agent_state.request_stop()
-            except Exception as stop_error:
-                logger.warning("Error stopping agent state: %s", stop_error)
-
-        if _global_browser_session:
-            try:
-                await _global_browser_session.kill()
-            except Exception as browser_error:
-                logger.warning("Error closing browser session: %s", browser_error)
-
-    except Exception as e:
-        # Log the error, but don't re-raise
-        logger.error("Unexpected error during browser cleanup: %s", e)
-    finally:
-        # Reset global variables
-        _global_browser_session = None
-        _global_agent_state = AgentState()
-        _global_agent = None
 
 
 @app.tool()
@@ -70,11 +32,12 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
     :return: The final result string from the agent run.
     """
 
-    global _global_agent, _global_browser_session, _global_agent_state
+    browser_session: Optional[BrowserSession] = None
+    agent_state = AgentState()
 
     try:
         # Clear any previous agent stop signals
-        _global_agent_state.clear_stop()
+        agent_state.clear_stop()
 
         # Read environment variables with defaults and parse carefully
         # Fallback to defaults if parsing fails.
@@ -111,26 +74,25 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
             provider=model_provider, model_name=model_name, temperature=temperature
         )
 
-        # Create or reuse the global browser session
-        if not _global_browser_session:
-            _global_browser_session = create_browser_session()
+        # Create a fresh browser session for this run
+        browser_session = create_browser_session()
 
         # Create controller and agent
         controller = CustomController()
-        _global_agent = CustomAgent(
+        agent = CustomAgent(
             task=task,
             add_infos=add_infos,
             use_vision=use_vision,
             llm=llm,
-            browser_session=_global_browser_session,
+            browser_session=browser_session,
             controller=controller,
             max_actions_per_step=max_actions_per_step,
             tool_call_in_content=tool_call_in_content,
-            agent_state=_global_agent_state,
+            agent_state=agent_state,
         )
 
         # Execute the agent task lifecycle
-        history = await _global_agent.execute_agent_task(max_steps=max_steps)
+        history = await agent.execute_agent_task(max_steps=max_steps)
 
         # Extract final result from the agent's history
         final_result = history.final_result()
@@ -145,7 +107,16 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
 
     finally:
         # Always ensure cleanup, even if no error.
-        await _cleanup_browser_resources()
+        try:
+            agent_state.request_stop()
+        except Exception as stop_error:
+            logger.warning("Error stopping agent state: %s", stop_error)
+
+        if browser_session:
+            try:
+                await browser_session.kill()
+            except Exception as browser_error:
+                logger.warning("Error closing browser session: %s", browser_error)
 
 
 def launch_mcp_browser_use_server() -> None:
@@ -157,15 +128,6 @@ def launch_mcp_browser_use_server() -> None:
         app.run()
     except Exception as e:
         logger.error("Error running MCP server: %s\n%s", e, traceback.format_exc())
-    finally:
-        # Use a separate event loop to ensure cleanup is awaited properly
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(_cleanup_browser_resources())
-            loop.close()
-        except Exception as cleanup_error:
-            logger.error("Cleanup error: %s", cleanup_error)
 
 
 if __name__ == "__main__":
