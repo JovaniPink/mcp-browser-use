@@ -442,7 +442,13 @@ class CustomAgent(Agent):
         result: List[ActionResult] = []
 
         try:
-            state = await self.browser_context.get_state(use_vision=self.use_vision)
+            try:
+                state = await self.browser_context.get_state(use_vision=self.use_vision)
+            except TypeError:
+                logger.warning(
+                    "get_state does not support 'use_vision' argument, falling back."
+                )
+                state = await self.browser_context.get_state()
             self.message_manager.add_state_message(state, self._last_result, step_info)
             input_messages = self.message_manager.get_messages()
 
