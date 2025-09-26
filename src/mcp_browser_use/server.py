@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 
-import os
-
 from mcp_browser_use.utils.logging import configure_logging
 
+# It is critical to configure logging before any other modules are imported,
+# as they might initialize logging themselves.
 configure_logging()
 
 import asyncio
+import logging
+import os
 import sys
 import traceback
-import logging
 from typing import Any, Optional
 
 from browser_use import Browser
