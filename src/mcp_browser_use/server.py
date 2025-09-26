@@ -5,16 +5,13 @@ import os
 import sys
 import traceback
 import logging
-from typing import Optional
+from typing import Any, Optional
 
-from browser_use import BrowserConfig
-from browser_use.browser.context import BrowserContextConfig
+from browser_use.browser.profile import ProxySettings
 from fastmcp import FastMCP
-from mcp.types import TextContent
-
 from mcp_browser_use.agent.custom_agent import CustomAgent
-from mcp_browser_use.browser.custom_browser import CustomBrowser
 from mcp_browser_use.controller.custom_controller import CustomController
+from mcp_browser_use.browser.custom_browser import CustomBrowser
 from mcp_browser_use.utils import utils
 from mcp_browser_use.utils.agent_state import AgentState
 
@@ -25,9 +22,7 @@ logger = logging.getLogger(__name__)
 # Global references for single "running agent" approach
 _global_agent: Optional[CustomAgent] = None
 _global_browser: Optional[CustomBrowser] = None
-from browser_use.browser.context import BrowserContext
-
-_global_browser_context: Optional[BrowserContext] = None
+_global_page: Any | None = None
 _global_agent_state: AgentState = AgentState()
 
 app = FastMCP("mcp_browser_use")
@@ -41,7 +36,7 @@ async def _cleanup_browser_resources() -> None:
 
     Need to add types.
     """
-    global _global_browser, _global_agent_state, _global_browser_context, _global_agent
+    global _global_browser, _global_page, _global_agent_state, _global_agent
 
     try:
         if _global_agent_state:
@@ -50,17 +45,19 @@ async def _cleanup_browser_resources() -> None:
             except Exception as stop_error:
                 logger.warning("Error stopping agent state: %s", stop_error)
 
-        if _global_browser_context:
+        if _global_page:
             try:
-                await _global_browser_context.close()
-            except Exception as context_error:
-                logger.warning("Error closing browser context: %s", context_error)
+                close = getattr(_global_page, "close", None)
+                if close:
+                    await close()
+            except Exception as page_error:
+                logger.warning("Error closing browser page: %s", page_error)
 
         if _global_browser:
             try:
-                await _global_browser.close()
+                await _global_browser.stop()
             except Exception as browser_error:
-                logger.warning("Error closing browser: %s", browser_error)
+                logger.warning("Error stopping browser: %s", browser_error)
 
     except Exception as e:
         # Log the error, but don't re-raise
@@ -68,7 +65,7 @@ async def _cleanup_browser_resources() -> None:
     finally:
         # Reset global variables
         _global_browser = None
-        _global_browser_context = None
+        _global_page = None
         _global_agent_state = AgentState()
         _global_agent = None
 
@@ -82,7 +79,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
     :param add_infos: Additional information or context for the agent.
     :return: The final result string from the agent run.
     """
-    global _global_agent, _global_browser, _global_browser_context, _global_agent_state
+    global _global_agent, _global_browser, _global_page, _global_agent_state
 
     try:
         # Clear any previous agent stop signals
@@ -126,26 +123,57 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
         # Get path to the Chrome/Chromium binary if provided
         chrome_path = os.getenv("CHROME_PATH") or None
 
-        # Create or reuse the global browser instance
-        if not _global_browser:
-            _global_browser = CustomBrowser(
-                config=BrowserConfig(
-                    headless=False,
-                    disable_security=False,
-                    chrome_instance_path=chrome_path,
-                    extra_chromium_args=[],
-                    wss_url=None,
-                    proxy=None,
-                )
+        # Determine headless mode with backward-compatible defaults
+        headless_env = os.getenv("BROWSER_USE_HEADLESS", "false").lower()
+        headless = headless_env in {"1", "true", "yes", "on"}
+
+        # Optional proxy configuration
+        proxy_settings: ProxySettings | None = None
+        proxy_url = os.getenv("BROWSER_USE_PROXY_URL")
+        if proxy_url:
+            proxy_settings = ProxySettings(
+                server=proxy_url,
+                bypass=os.getenv("BROWSER_USE_NO_PROXY"),
+                username=os.getenv("BROWSER_USE_PROXY_USERNAME"),
+                password=os.getenv("BROWSER_USE_PROXY_PASSWORD"),
             )
 
-        # Create or reuse the global browser context
-        if not _global_browser_context:
-            _global_browser_context = await _global_browser.new_context(
-                config=BrowserContextConfig(
-                    trace_path=None, save_recording_path=None, no_viewport=False
-                )
+        allowed_domains_env = os.getenv("BROWSER_USE_ALLOWED_DOMAINS")
+        allowed_domains = None
+        if allowed_domains_env:
+            allowed_domains = [
+                domain.strip()
+                for domain in allowed_domains_env.split(",")
+                if domain.strip()
+            ]
+
+        extra_args_env = os.getenv("BROWSER_USE_EXTRA_CHROMIUM_ARGS")
+        extra_args = None
+        if extra_args_env:
+            extra_args = [
+                arg.strip()
+                for arg in extra_args_env.split(",")
+                if arg.strip()
+            ]
+
+        cdp_url = os.getenv("BROWSER_USE_CDP_URL") or None
+
+        # Create or reuse the global browser
+        if not _global_browser:
+            _global_browser = CustomBrowser(
+                headless=headless,
+                disable_security=os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower()
+                in {"1", "true", "yes", "on"},
+                executable_path=chrome_path,
+                args=extra_args,
+                proxy=proxy_settings,
+                allowed_domains=allowed_domains,
+                cdp_url=cdp_url,
             )
+            await _global_browser.start()
+
+        # Always create a fresh page for each request
+        _global_page = await _global_browser.new_page()
 
         # Create controller and agent
         controller = CustomController()
@@ -155,7 +183,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
             use_vision=use_vision,
             llm=llm,
             browser=_global_browser,
-            browser_context=_global_browser_context,
+            browser_context=_global_page,
             controller=controller,
             max_actions_per_step=max_actions_per_step,
             tool_call_in_content=tool_call_in_content,

@@ -13,7 +13,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "browser-use==0.7.9",
+    "browser-use>=0.7.1,<0.8",
     "fastapi>=0.115.6",
     "fastmcp>=0.4.1",
     "instructor>=1.7.2",
