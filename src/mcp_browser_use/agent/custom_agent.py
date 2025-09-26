@@ -101,6 +101,11 @@ class CustomAgent(Agent):
         self.controller = controller
 
         # Backwards compatibility for code that may still pass browser alias
+        if browser is not None and browser_session is not None:
+            logger.warning(
+                "Both 'browser_session' and 'browser' (alias) were provided. "
+                "'browser' will be ignored."
+            )
         if browser_session is None:
             browser_session = browser
 
