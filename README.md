@@ -25,7 +25,7 @@ This repository provides a production-ready wrapper around the `browser-use` aut
 ├── documentation/
 │   ├── CONFIGURATION.md      # Detailed configuration reference
 │   └── SECURITY.md           # Security considerations for running the server
-├── sample.env.env            # Example environment variables for local development
+├── .env.example            # Example environment variables for local development
 ├── src/mcp_browser_use/
 │   ├── agent/                # Custom agent, prompts, message history, and views
 │   ├── browser/              # Browser session factory and persistence helpers
