@@ -192,8 +192,8 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
             agent_state=_global_agent_state,
         )
 
-        # Run agent
-        history = await _global_agent.run(max_steps=max_steps)
+        # Execute the agent task lifecycle
+        history = await _global_agent.execute_agent_task(max_steps=max_steps)
 
         # Extract final result from the agent's history
         final_result = history.final_result()
@@ -211,7 +211,7 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
         await _cleanup_browser_resources()
 
 
-def main() -> None:
+def launch_mcp_browser_use_server() -> None:
     """
     Entry point for running the FastMCP application.
     Handles server start and final resource cleanup.
@@ -232,4 +232,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    launch_mcp_browser_use_server()
