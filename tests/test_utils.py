@@ -58,6 +58,23 @@ if "langchain_ollama" not in sys.modules:
     module.ChatOllama = ChatOllama
     sys.modules["langchain_ollama"] = module
 
+if "browser_use" not in sys.modules:
+    browser_use_module = types.ModuleType("browser_use")
+    browser_module = types.ModuleType("browser_use.browser")
+    events_module = types.ModuleType("browser_use.browser.events")
+
+    class ScreenshotEvent:
+        def __init__(self, full_page: bool = False):
+            self.full_page = full_page
+
+    events_module.ScreenshotEvent = ScreenshotEvent
+    browser_module.events = events_module
+    browser_use_module.browser = browser_module
+
+    sys.modules["browser_use"] = browser_use_module
+    sys.modules["browser_use.browser"] = browser_module
+    sys.modules["browser_use.browser.events"] = events_module
+
 # Import utils module directly from file after stubbing dependencies
 spec = importlib.util.spec_from_file_location("mcp_browser_use.utils.utils", UTILS_PATH)
 utils = importlib.util.module_from_spec(spec)
@@ -126,72 +143,71 @@ def test_get_latest_files_skips_recent_files(tmp_path, monkeypatch):
 
 
 @pytest.mark.anyio("asyncio")
-async def test_capture_screenshot_prefers_non_blank_page():
-    class DummyPage:
-        def __init__(self, url, payload):
-            self.url = url
-            self._payload = payload
-            self.calls = 0
+async def test_capture_screenshot_uses_event_bus():
+    screenshot_payload = base64.b64encode(b"payload").decode("utf-8")
 
-        async def screenshot(self, **kwargs):
-            self.calls += 1
-            return self._payload
+    class DummyEvent:
+        def __init__(self, result):
+            self._result = result
+            self.awaited = False
 
-    class DummyPlaywrightContext:
-        def __init__(self, pages):
-            self.pages = pages
+        def __await__(self):
+            async def _wait():
+                self.awaited = True
+                return self
 
-    class DummyPlaywrightBrowser:
-        def __init__(self, contexts):
-            self.contexts = contexts
+            return _wait().__await__()
 
-    class DummyBrowser:
-        def __init__(self, contexts):
-            self.playwright_browser = DummyPlaywrightBrowser(contexts)
+        async def event_result(self, raise_if_any=True, raise_if_none=True):
+            return self._result
 
-    class DummyBrowserContext:
-        def __init__(self, contexts):
-            self.browser = DummyBrowser(contexts)
+    class DummyEventBus:
+        def __init__(self, dispatched_event):
+            self._event = dispatched_event
+            self.dispatched = []
 
-    blank_page = DummyPage("about:blank", b"blank")
-    active_page = DummyPage("https://example.com", b"payload")
-    browser_context = DummyBrowserContext(
-        [DummyPlaywrightContext([blank_page, active_page])]
-    )
+        def dispatch(self, event):
+            self.dispatched.append(event)
+            return self._event
 
-    encoded = await utils.capture_screenshot(browser_context)
+    class DummyBrowserSession:
+        def __init__(self, event_bus):
+            self.event_bus = event_bus
 
-    assert encoded == base64.b64encode(b"payload").decode("utf-8")
-    assert blank_page.calls == 0
-    assert active_page.calls == 1
+    dummy_event = DummyEvent(screenshot_payload)
+    event_bus = DummyEventBus(dummy_event)
+    session = DummyBrowserSession(event_bus)
+
+    encoded = await utils.capture_screenshot(session)
+
+    assert encoded == screenshot_payload
+    assert dummy_event.awaited is True
+    assert len(event_bus.dispatched) == 1
+    assert isinstance(event_bus.dispatched[0], utils.ScreenshotEvent)
 
 
 @pytest.mark.anyio("asyncio")
 async def test_capture_screenshot_returns_none_on_error():
-    class FailingPage:
-        url = "https://example.com"
+    class DummyErrorEvent:
+        def __await__(self):
+            async def _wait():
+                return self
 
-        async def screenshot(self, **kwargs):
+            return _wait().__await__()
+
+        async def event_result(self, raise_if_any=True, raise_if_none=True):
             raise RuntimeError("boom")
 
-    class DummyPlaywrightContext:
-        def __init__(self, pages):
-            self.pages = pages
+    class DummyEventBus:
+        def dispatch(self, event):
+            return DummyErrorEvent()
 
-    class DummyPlaywrightBrowser:
-        def __init__(self, contexts):
-            self.contexts = contexts
+    class DummyBrowserSession:
+        def __init__(self):
+            self.event_bus = DummyEventBus()
 
-    class DummyBrowser:
-        def __init__(self, contexts):
-            self.playwright_browser = DummyPlaywrightBrowser(contexts)
+    session = DummyBrowserSession()
 
-    class DummyBrowserContext:
-        def __init__(self, contexts):
-            self.browser = DummyBrowser(contexts)
-
-    browser_context = DummyBrowserContext([DummyPlaywrightContext([FailingPage()])])
-
-    result = await utils.capture_screenshot(browser_context)
+    result = await utils.capture_screenshot(session)
 
     assert result is None
