@@ -122,11 +122,17 @@ async def test_create_client_session_kwargs_with_factory_raise():
             pass
 
 
-def test_legacy_namespace_imports():
-    module = importlib.import_module("mcp_browser.use.mcp_browser_use")
-
-    assert module.create_client_session is create_client_session
-    assert module.AgentNotRegisteredError is AgentNotRegisteredError
+@pytest.mark.parametrize(
+    "legacy_module",
+    [
+        "mcp_browser",
+        "mcp_browser.use",
+        "mcp_browser.use.mcp_browser_use",
+    ],
+)
+def test_legacy_namespace_is_removed(legacy_module):
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module(legacy_module)
 
 
 def test_exception_type():
