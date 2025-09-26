@@ -14,7 +14,7 @@ MODULES_TO_TEST: Iterable[str] = (
     "mcp_browser_use.controller.custom_controller",
     "mcp_browser_use.utils.utils",
     "mcp_browser_use.agent.custom_agent",
-    "mcp_browser_use.agent.custom_massage_manager",
+    "mcp_browser_use.agent.custom_message_manager",
 )
 
 
