@@ -70,7 +70,7 @@ def _azure_openai_params(kwargs: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-LLM_PROVIDERS: Dict[str, Tuple[Any, Callable[[Dict[str, Any]], Dict[str, Any]]]] = {
+LLM_PROVIDERS: Dict[str, Tuple[Type, Callable[[Dict[str, Any]], Dict[str, Any]]]] = {
     "anthropic": (ChatAnthropic, _anthropic_params),
     "openai": (ChatOpenAI, _openai_params),
     "deepseek": (ChatOpenAI, _deepseek_params),
