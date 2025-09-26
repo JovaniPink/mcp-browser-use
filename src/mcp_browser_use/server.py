@@ -162,8 +162,10 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
         if not _global_browser:
             _global_browser = CustomBrowser(
                 headless=headless,
-                disable_security=os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower()
-                in {"1", "true", "yes", "on"},
+                disable_security=(
+                    os.getenv("BROWSER_USE_DISABLE_SECURITY", "false").lower()
+                    in {"1", "true", "yes", "on"}
+                ),
                 executable_path=chrome_path,
                 args=extra_args,
                 proxy=proxy_settings,
