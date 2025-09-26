@@ -75,7 +75,6 @@ Some ancillary features inspect the following variables:
 | Variable | Purpose |
 | --- | --- |
 | `WIN_FONT_DIR` | Custom Windows font directory used when generating GIF summaries of browsing sessions. |
-| `BROWSER_USE_EXTRA_CHROMIUM_ARGS` | Recognised both by the browser manager and various tests to tweak launch flags. |
 
 ## Tips for managing configuration
 
