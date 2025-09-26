@@ -2,12 +2,13 @@ import importlib
 
 import pytest
 
+from mcp_browser_use import client as client_module
+from mcp_browser_use.client import AgentNotRegisteredError, create_client_session
+
 
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
-
-from mcp_browser_use.client import AgentNotRegisteredError, create_client_session
 
 
 @pytest.mark.anyio("asyncio")
@@ -75,6 +76,49 @@ async def test_create_client_session_rejects_mixed_arguments():
 
     with pytest.raises(ValueError):
         async with create_client_session(client=dummy, client_factory=DummyClient):
+            pass
+
+
+@pytest.mark.anyio("asyncio")
+async def test_create_client_session_constructs_default_client(monkeypatch):
+    created = {}
+
+    class DummyClient:
+        def __init__(self, app, **kwargs):
+            created["app"] = app
+            created["kwargs"] = kwargs
+
+        async def __aenter__(self):
+            created["entered"] = True
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            created["exited"] = True
+
+    monkeypatch.setattr("mcp_browser_use.client.Client", DummyClient)
+
+    async with create_client_session(timeout=5) as session:
+        assert isinstance(session, DummyClient)
+
+    assert created["app"] is client_module.app
+    assert created["kwargs"] == {"timeout": 5}
+    assert created["entered"] is True
+    assert created["exited"] is True
+
+
+@pytest.mark.anyio("asyncio")
+async def test_create_client_session_kwargs_with_factory_raise():
+    class DummyClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+    kwargs = {"client_factory": DummyClient, "timeout": 10}
+
+    with pytest.raises(ValueError):
+        async with create_client_session(**kwargs):
             pass
 
 
