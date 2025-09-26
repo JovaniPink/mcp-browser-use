@@ -190,11 +190,7 @@ async def capture_screenshot(browser_context) -> Optional[str]:
         logger.debug("No pages available in playwright_context.")
         return None
 
-    active_page = browser_pages[0]
-    for candidate_page in browser_pages:
-        if candidate_page.url != "about:blank":
-            active_page = candidate_page
-            break
+    active_page = next((page for page in browser_pages if page.url != "about:blank"), browser_pages[0])
 
     try:
         screenshot = await active_page.screenshot(type="jpeg", quality=75, scale="css")
