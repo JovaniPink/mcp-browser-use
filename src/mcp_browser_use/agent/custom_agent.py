@@ -18,8 +18,7 @@ from browser_use.agent.views import (
     AgentOutput,
     AgentHistory,
 )
-from browser_use.browser.browser import Browser
-from browser_use.browser.context import BrowserContext
+from browser_use import BrowserSession
 from browser_use.browser.views import BrowserStateHistory
 from browser_use.controller.service import Controller
 from browser_use.telemetry.views import AgentEndTelemetryEvent, AgentRunTelemetryEvent
@@ -40,7 +39,7 @@ logger = logging.getLogger(__name__)
 class CustomAgent(Agent):
     """
     An AI-driven Agent that uses a language model to determine browser actions,
-    interacts with a BrowserContext, and manages conversation history and state.
+    interacts with a BrowserSession, and manages conversation history and state.
     """
 
     def __init__(
@@ -48,8 +47,9 @@ class CustomAgent(Agent):
         task: str,
         llm: BaseChatModel,
         add_infos: str = "",
-        browser: Optional[Browser] = None,
-        browser_context: Optional[BrowserContext] = None,
+        browser_session: Optional[BrowserSession] = None,
+        browser: Optional[BrowserSession] = None,
+        browser_context: Optional[Any] = None,
         controller: Optional[Controller] = None,
         use_vision: bool = True,
         save_conversation_path: Optional[str] = None,
@@ -79,8 +79,9 @@ class CustomAgent(Agent):
         :param task: Main instruction or goal for the agent.
         :param llm: The large language model (BaseChatModel) used for reasoning.
         :param add_infos: Additional information or context to pass to the agent.
-        :param browser: Optional Browser instance.
-        :param browser_context: Optional BrowserContext to share state.
+        :param browser_session: Optional BrowserSession instance.
+        :param browser: Backwards-compatible alias for browser_session.
+        :param browser_context: Deprecated legacy argument retained for compatibility.
         :param controller: Optional controller for handling multi-step actions. A new
             controller is created when not provided.
         :param use_vision: Whether to use vision-based element detection.
@@ -99,11 +100,19 @@ class CustomAgent(Agent):
         controller = controller or Controller()
         self.controller = controller
 
+        # Backwards compatibility for code that may still pass browser alias
+        if browser_session is None:
+            browser_session = browser
+
+        if browser_context is not None:
+            logger.debug(
+                "browser_context argument is deprecated and ignored in CustomAgent"
+            )
+
         super().__init__(
             task=task,
             llm=llm,
-            browser=browser,
-            browser_context=browser_context,
+            browser_session=browser_session,
             controller=controller,
             use_vision=use_vision,
             save_conversation_path=save_conversation_path,

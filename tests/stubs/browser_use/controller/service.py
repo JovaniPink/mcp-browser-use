@@ -1,8 +1,20 @@
+class _Registry:
+    def get_prompt_description(self):
+        return ""
+
+    def create_action_model(self):
+        return type("ActionModel", (), {})
+
+    def action(self, *_args, **_kwargs):
+        def decorator(func):
+            return func
+
+        return decorator
+
+
 class Controller:
     def __init__(self):
-        self.registry = type('Registry', (), {
-            'get_prompt_description': lambda self: '',
-            'create_action_model': lambda self: type('ActionModel', (), {})
-        })()
-    async def multi_act(self, actions, context):
+        self.registry = _Registry()
+
+    async def multi_act(self, actions, context):  # pragma: no cover - stub
         return []
