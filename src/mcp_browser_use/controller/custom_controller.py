@@ -1,19 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import os
 import sys
 
 import pyperclip
 from browser_use import BrowserSession
 from browser_use.agent.views import ActionResult
 from browser_use.controller.service import Controller
-
-# Logging
-logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
 
 logger = logging.getLogger(__name__)
 
