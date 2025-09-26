@@ -69,7 +69,8 @@ The server implements a browser automation system with:
 
 - **CustomController** registers clipboard-friendly actions so agents can copy data into the OS clipboard or paste clipboard contents back into the active page when needed.【F:src/mcp_browser_use/controller/custom_controller.py†L13-L63】
 - **CustomAgent** can export its full browsing history as an annotated GIF, making it easy to review each step of an automation run visually.【F:src/mcp_browser_use/agent/custom_agent.py†L367-L520】
-- **CustomSystemPrompt** and the **CustomMassageManager** provide detailed output formatting rules, tailored memory handling, and prompt construction to guide the agent's reasoning and tool use.【F:src/mcp_browser_use/agent/custom_prompts.py†L13-L200】【F:src/mcp_browser_use/agent/custom_massage_manager.py†L19-L124】
+- **CustomSystemPrompt** and **CustomAgentMessagePrompt** provide detailed output formatting rules, tailored memory handling, and prompt construction to guide the agent's reasoning and tool use.【F:src/mcp_browser_use/agent/custom_prompts.py†L13-L259】
+- **CustomMessageManager** (implemented in `custom_massage_manager.py`) manages message history, memory persistence, and example tool calls to keep the agent aligned with the expected response schema.【F:src/mcp_browser_use/agent/custom_massage_manager.py†L22-L126】
 
 ### Requirements
 
