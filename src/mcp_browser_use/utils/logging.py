@@ -20,7 +20,7 @@ def _resolve_level(level_name: Optional[str]) -> int:
         return int(level_name)
 
     resolved = logging.getLevelName(level_name.upper())
-    if isinstance(resolved, str):  # logging returns the input if unknown
+    if resolved == level_name.upper():  # logging returns the input if unknown
         return logging.INFO
     return resolved  # type: ignore[return-value]
 
