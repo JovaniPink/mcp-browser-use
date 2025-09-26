@@ -37,4 +37,4 @@ build-backend = "hatchling.build"
 packages = ["src/mcp_browser_use", "src/mcp_browser"]
 
 [project.scripts]
-mcp-browser-use = "mcp_browser_use.server:main"
+mcp-browser-use = "mcp_browser_use.server:launch_mcp_browser_use_server"

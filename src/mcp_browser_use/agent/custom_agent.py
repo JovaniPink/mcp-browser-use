@@ -402,10 +402,12 @@ class CustomAgent(Agent):
             logger.debug(f"Full traceback: {traceback.format_exc()}")
             return False
 
-    @time_execution_async("--step")
-    async def step(self, step_info: Optional[CustomAgentStepInfo] = None) -> None:
+    @time_execution_async("--execute-agent-step")
+    async def execute_agent_step(
+        self, step_info: Optional[CustomAgentStepInfo] = None
+    ) -> None:
         """
-        Execute one step of the task:
+        Execute a single agent step of the task:
         1) Capture browser state
         2) Query LLM for next action
         3) Execute that action(s)
@@ -743,10 +745,10 @@ class CustomAgent(Agent):
         image.alpha_composite(overlay)
         return image.convert("RGB")
 
-    async def run(self, max_steps: int = 100) -> AgentHistoryList:
+    async def execute_agent_task(self, max_steps: int = 100) -> AgentHistoryList:
         """
-        Execute the entire task for up to max_steps or until 'done'.
-        Checks for external stop signals, logs each step in self.history.
+        Execute the entire agent task for up to max_steps or until 'done'.
+        Checks for external stop signals and logs each step in self.history.
         """
         try:
             logger.info(f"🚀 Starting task: {self.task}")
@@ -784,8 +786,8 @@ class CustomAgent(Agent):
                 if self._too_many_failures():
                     break
 
-                # 4) Execute one step
-                await self.step(step_info)
+                # 4) Execute one detailed agent step
+                await self.execute_agent_step(step_info)
 
                 if self.history.is_done():
                     if self.validate_output and step < max_steps - 1:
