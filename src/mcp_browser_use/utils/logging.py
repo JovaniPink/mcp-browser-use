@@ -16,15 +16,13 @@ def _resolve_level(level_name: Optional[str]) -> int:
     if not level_name:
         return logging.INFO
 
-    if level_name.isdigit():
+    try:
         return int(level_name)
-
-    resolved = logging.getLevelName(level_name.upper())
-    if isinstance(resolved, int):
-        return resolved
-    return logging.INFO
-
-
+    except ValueError:
+        resolved = logging.getLevelName(level_name.upper())
+        if isinstance(resolved, int):
+            return resolved
+        return logging.INFO
 def configure_logging() -> None:
     """Configure the root logger once for the application."""
 
