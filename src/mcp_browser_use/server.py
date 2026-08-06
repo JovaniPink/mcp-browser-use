@@ -1,180 +1,129 @@
-# -*- coding: utf-8 -*-
+"""FastMCP server entry point backed by browser-use's public API."""
 
-from mcp_browser_use.utils.logging import configure_logging
+from __future__ import annotations
 
-# It is critical to configure logging before any other modules are imported,
-# as they might initialize logging themselves.
-configure_logging()
-
-import asyncio
 import logging
 import os
-import sys
-import traceback
-from typing import Any, Optional
+from dataclasses import dataclass
 
-from browser_use import Browser
+from browser_use import Agent, BrowserSession
 from fastmcp import FastMCP
-from mcp_browser_use.agent.custom_agent import CustomAgent
-from mcp_browser_use.controller.custom_controller import CustomController
+
 from mcp_browser_use.browser.browser_manager import create_browser_session
-from mcp_browser_use.utils import utils
-from mcp_browser_use.utils.agent_state import AgentState
+from mcp_browser_use.utils.llm import get_llm_model
+from mcp_browser_use.utils.logging import configure_logging
+
+configure_logging()
 
 logger = logging.getLogger(__name__)
 
 app = FastMCP("mcp_browser_use")
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
-_MAX_TASK_CHARS = 20_000
-_MAX_CONTEXT_CHARS = 20_000
-
-
-def _validated_tool_input(task: str, add_infos: str) -> tuple[str, str]:
-    """Normalize and bound untrusted MCP tool input before allocating resources."""
-
-    task = task.strip()
-    add_infos = add_infos.strip()
-
-    if not task:
-        raise ValueError("task must not be empty")
-    if len(task) > _MAX_TASK_CHARS:
-        raise ValueError(f"task must not exceed {_MAX_TASK_CHARS} characters")
-    if len(add_infos) > _MAX_CONTEXT_CHARS:
-        raise ValueError(f"add_infos must not exceed {_MAX_CONTEXT_CHARS} characters")
-
-    return task, add_infos
 
 
 def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
-    """Read an integer setting and clamp invalid or unsafe values to its default."""
+    raw_value = os.getenv(name)
+    try:
+        value = int(raw_value) if raw_value is not None else default
+    except ValueError:
+        logger.warning("Invalid integer for %s; using %s", name, default)
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+def _env_float(name: str, default: float) -> float:
+    raw_value = os.getenv(name)
+    try:
+        return float(raw_value) if raw_value is not None else default
+    except ValueError:
+        logger.warning("Invalid float for %s; using %s", name, default)
+        return default
+
+
+@dataclass(frozen=True, slots=True)
+class AgentRuntimeConfig:
+    """Validated environment-backed settings for one browser agent run."""
+
+    provider: str
+    model: str
+    temperature: float
+    max_steps: int
+    max_actions_per_step: int
+    use_vision: bool
+
+    @classmethod
+    def from_env(cls) -> AgentRuntimeConfig:
+        return cls(
+            provider=os.getenv("MCP_MODEL_PROVIDER", "anthropic").strip().lower(),
+            model=os.getenv("MCP_MODEL_NAME", "claude-sonnet-4-6").strip(),
+            temperature=_env_float("MCP_TEMPERATURE", 0.3),
+            max_steps=_env_int("MCP_MAX_STEPS", 30, minimum=1, maximum=100),
+            max_actions_per_step=_env_int(
+                "MCP_MAX_ACTIONS_PER_STEP", 5, minimum=1, maximum=20
+            ),
+            use_vision=os.getenv("MCP_USE_VISION", "true").lower() in _TRUE_VALUES,
+        )
+
+
+def _task_with_context(task: str, add_infos: str) -> str:
+    task = task.strip()
+    if not task:
+        raise ValueError("task must not be empty")
+    if not add_infos.strip():
+        return task
+    return f"{task}\n\nAdditional context:\n{add_infos.strip()}"
+
+
+async def execute_browser_agent(task: str, add_infos: str = "") -> str:
+    """Execute one isolated browser-use agent and always release its session."""
+
+    runtime = AgentRuntimeConfig.from_env()
+    browser_session: BrowserSession | None = None
 
     try:
-        value = int(os.getenv(name, str(default)))
-    except ValueError:
-        logger.warning("Invalid integer for %s, using default=%s", name, default)
-        return default
-
-    if not minimum <= value <= maximum:
-        logger.warning(
-            "%s must be between %s and %s, using default=%s",
-            name,
-            minimum,
-            maximum,
-            default,
+        llm = get_llm_model(
+            runtime.provider,
+            model_name=runtime.model,
+            temperature=runtime.temperature,
         )
-        return default
-    return value
+        browser_session = create_browser_session()
+        agent = Agent(
+            task=_task_with_context(task, add_infos),
+            llm=llm,
+            browser_session=browser_session,
+            use_vision=runtime.use_vision,
+            max_actions_per_step=runtime.max_actions_per_step,
+            source="mcp-browser-use",
+        )
+        history = await agent.run(max_steps=runtime.max_steps)
+        return history.final_result() or "Agent stopped without a final result."
+    except Exception as error:
+        logger.exception("Browser agent run failed")
+        raise RuntimeError("Browser agent run failed; inspect server logs.") from error
+    finally:
+        if browser_session is not None:
+            try:
+                await browser_session.stop()
+            except Exception:
+                logger.warning("Graceful browser stop failed; forcing shutdown")
+                try:
+                    await browser_session.kill()
+                except Exception:
+                    logger.exception("Forced browser shutdown also failed")
 
 
 @app.tool()
 async def run_browser_agent(task: str, add_infos: str = "") -> str:
-    """
-    This is the entrypoint for running a browser-based agent.
+    """Run a browser automation task with optional additional context."""
 
-    :param task: The main instruction or goal for the agent.
-    :param add_infos: Additional information or context for the agent.
-    :return: The final result string from the agent run.
-    """
-
-    task, add_infos = _validated_tool_input(task, add_infos)
-
-    browser_session: Optional[Browser] = None
-    agent_state = AgentState()
-
-    try:
-        # Clear any previous agent stop signals
-        agent_state.clear_stop()
-
-        # Read environment variables with defaults and parse carefully
-        # Fallback to defaults if parsing fails.
-        model_provider = os.getenv("MCP_MODEL_PROVIDER", "anthropic")
-        model_name = os.getenv("MCP_MODEL_NAME", "claude-3-5-sonnet-20241022")
-
-        def safe_float(env_var: str, default: float) -> float:
-            """Safely parse a float from an environment variable."""
-            try:
-                return float(os.getenv(env_var, str(default)))
-            except ValueError:
-                logger.warning(f"Invalid float for {env_var}, using default={default}")
-                return default
-
-        # Get environment variables with defaults
-        temperature = safe_float("MCP_TEMPERATURE", 0.3)
-        max_steps = _env_int("MCP_MAX_STEPS", 30, minimum=1, maximum=100)
-        use_vision = os.getenv("MCP_USE_VISION", "true").lower() in _TRUE_VALUES
-        max_actions_per_step = _env_int(
-            "MCP_MAX_ACTIONS_PER_STEP", 5, minimum=1, maximum=20
-        )
-        tool_call_in_content = (
-            os.getenv("MCP_TOOL_CALL_IN_CONTENT", "true").lower() in _TRUE_VALUES
-        )
-
-        # Prepare LLM
-        llm = utils.get_llm_model(
-            provider=model_provider, model_name=model_name, temperature=temperature
-        )
-
-        # Create a fresh browser session for this run
-        browser_session = create_browser_session()
-        await browser_session.start()
-
-        # Create controller and agent
-        controller = CustomController()
-        agent = CustomAgent(
-            task=task,
-            add_infos=add_infos,
-            use_vision=use_vision,
-            llm=llm,
-            browser_session=browser_session,
-            controller=controller,
-            max_actions_per_step=max_actions_per_step,
-            tool_call_in_content=tool_call_in_content,
-            agent_state=agent_state,
-        )
-
-        # Execute the agent task lifecycle
-        history = await agent.execute_agent_task(max_steps=max_steps)
-
-        # Extract final result from the agent's history
-        final_result = history.final_result()
-        if not final_result:
-            final_result = f"No final result. Possibly incomplete. {history}"
-
-        return final_result
-
-    except Exception as e:
-        logger.error("run-browser-agent error: %s", str(e))
-        raise ValueError(f"run-browser-agent error: {e}\n{traceback.format_exc()}")
-
-    finally:
-        # Always ensure cleanup, even if no error.
-        try:
-            agent_state.request_stop()
-        except Exception as stop_error:
-            logger.warning("Error stopping agent state: %s", stop_error)
-
-        if browser_session:
-            try:
-                await browser_session.stop()
-            except Exception as browser_error:
-                logger.warning(
-                    "Failed to stop browser session gracefully, killing it: %s",
-                    browser_error,
-                )
-                if hasattr(browser_session, "kill"):
-                    await browser_session.kill()
+    return await execute_browser_agent(task, add_infos)
 
 
 def launch_mcp_browser_use_server() -> None:
-    """
-    Entry point for running the FastMCP application.
-    Handles server start and final resource cleanup.
-    """
-    try:
-        app.run()
-    except Exception as e:
-        logger.error("Error running MCP server: %s\n%s", e, traceback.format_exc())
+    """Launch the MCP server using FastMCP's default stdio transport."""
+
+    app.run()
 
 
 if __name__ == "__main__":

@@ -7,10 +7,7 @@ import logging
 
 import pytest
 
-
-browser_manager = importlib.import_module(
-    "mcp_browser_use.browser.browser_manager"
-)
+browser_manager = importlib.import_module("mcp_browser_use.browser.browser_manager")
 
 
 @pytest.fixture(autouse=True)
