@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 app = FastMCP("mcp_browser_use")
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
+_MAX_TASK_CHARS = 20_000
+_MAX_CONTEXT_CHARS = 20_000
 
 
 def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
@@ -70,14 +72,21 @@ def _task_with_context(task: str, add_infos: str) -> str:
     task = task.strip()
     if not task:
         raise ValueError("task must not be empty")
-    if not add_infos.strip():
+    if len(task) > _MAX_TASK_CHARS:
+        raise ValueError(f"task must not exceed {_MAX_TASK_CHARS} characters")
+
+    add_infos = add_infos.strip()
+    if len(add_infos) > _MAX_CONTEXT_CHARS:
+        raise ValueError(f"add_infos must not exceed {_MAX_CONTEXT_CHARS} characters")
+    if not add_infos:
         return task
-    return f"{task}\n\nAdditional context:\n{add_infos.strip()}"
+    return f"{task}\n\nAdditional context:\n{add_infos}"
 
 
 async def execute_browser_agent(task: str, add_infos: str = "") -> str:
     """Execute one isolated browser-use agent and always release its session."""
 
+    task_prompt = _task_with_context(task, add_infos)
     runtime = AgentRuntimeConfig.from_env()
     browser_session: BrowserSession | None = None
 
@@ -89,7 +98,7 @@ async def execute_browser_agent(task: str, add_infos: str = "") -> str:
         )
         browser_session = create_browser_session()
         agent = Agent(
-            task=_task_with_context(task, add_infos),
+            task=task_prompt,
             llm=llm,
             browser_session=browser_session,
             use_vision=runtime.use_vision,

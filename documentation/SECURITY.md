@@ -7,6 +7,8 @@ page as untrusted input, and treat a persistent browser profile as a credential.
 
 - Each tool call creates its own `BrowserSession` and attempts graceful then
   forced cleanup.
+- Task and context input is validated and bounded before provider or browser
+  resources are allocated.
 - Browser security remains enabled unless
   `BROWSER_USE_DISABLE_SECURITY=true` is explicitly set.
 - Model adapters and agent orchestration use browser-use's public API; this
@@ -23,7 +25,8 @@ page as untrusted input, and treat a persistent browser profile as a credential.
 2. Use ephemeral profiles for untrusted tasks. A persisted profile may contain
    cookies, authentication sessions, saved form data, and browsing history.
 3. Keep provider keys in a secret manager or MCP client secret store. Never log
-   full environment dictionaries.
+   full environment dictionaries. Credential-bearing CDP URLs are redacted from
+   the server's debug output.
 4. Run the server in an isolated container or VM when tasks may download files
    or visit unknown pages.
 5. Keep CDP endpoints bound to localhost or behind an authenticated tunnel. An

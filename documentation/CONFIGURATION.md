@@ -18,6 +18,13 @@ MCP client, shell, container runtime, or another secret-injection mechanism.
 Invalid numeric values fall back to their documented defaults and emit a
 warning without logging secrets.
 
+## Tool input contract
+
+`run_browser_agent` trims its `task` and optional `add_infos` values before use.
+The task must be non-empty, and each input is limited to 20,000 characters.
+Validation happens before model or browser-session allocation so malformed or
+oversized requests do not consume provider or browser resources.
+
 ## Provider credentials
 
 | Provider | Required values | Optional endpoint values |
@@ -64,4 +71,5 @@ endpoint to the public internet; it provides full browser control.
 - `BROWSER_USE_PROXY_PASSWORD`
 
 Proxy credentials are passed to browser-use's `ProxySettings` object and are
-excluded from debug output.
+excluded from debug output. CDP URLs are also redacted because their user-info
+or query parameters may contain access tokens.

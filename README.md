@@ -88,7 +88,9 @@ Supported provider values are:
 - `ollama`
 - `openai`
 
-The server rejects an empty task, bounds `MCP_MAX_STEPS` to 1–100, and bounds
+The server validates tool input before allocating a model or browser session. It
+rejects an empty task, limits both the task and optional context to 20,000
+characters each, bounds `MCP_MAX_STEPS` to 1–100, and bounds
 `MCP_MAX_ACTIONS_PER_STEP` to 1–20.
 
 ## Development and validation

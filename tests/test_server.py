@@ -78,3 +78,27 @@ def test_runtime_config_bounds_untrusted_limits(monkeypatch):
 def test_empty_task_is_rejected():
     with pytest.raises(ValueError, match="must not be empty"):
         server._task_with_context("  ", "")
+
+
+@pytest.mark.parametrize(
+    ("task", "add_infos", "field"),
+    (
+        ("x" * (server._MAX_TASK_CHARS + 1), "", "task"),
+        ("Open example.com", "x" * (server._MAX_CONTEXT_CHARS + 1), "add_infos"),
+    ),
+)
+def test_task_input_limits_are_enforced(task, add_infos, field):
+    with pytest.raises(ValueError, match=rf"{field} must not exceed"):
+        server._task_with_context(task, add_infos)
+
+
+@pytest.mark.asyncio
+async def test_invalid_task_is_rejected_before_resource_allocation(monkeypatch):
+    def fail_if_called(*args, **kwargs):
+        pytest.fail("invalid task allocated a model or browser session")
+
+    monkeypatch.setattr(server, "get_llm_model", fail_if_called)
+    monkeypatch.setattr(server, "create_browser_session", fail_if_called)
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        await server.execute_browser_agent("  ")
