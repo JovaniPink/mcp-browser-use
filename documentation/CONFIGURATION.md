@@ -2,7 +2,7 @@
 
 This guide describes every configuration option recognised by the MCP Browser Use server. All settings can be supplied as environment variables (e.g. via a `.env` file loaded with [`python-dotenv`](https://pypi.org/project/python-dotenv/)) or injected by your MCP client.
 
-The sample file at [`sample.env.example`](../sample.env.example) contains a ready-to-copy template with placeholders for secrets.
+The sample file at [`sample.env.env`](../sample.env.env) contains a ready-to-copy template with placeholders for secrets.
 
 ## How configuration is loaded
 
@@ -12,6 +12,13 @@ The sample file at [`sample.env.example`](../sample.env.example) contains a read
 
 Unless otherwise noted, boolean flags treat any of `1`, `true`, `yes`, `on` (case insensitive) as **true**. Any other value is considered **false**.
 
+## MCP Tool Input Contract
+
+`run_browser_agent` trims its `task` and optional `add_infos` values before use. The task must be
+non-empty, and each value is limited to 20,000 characters. Validation happens before model or
+browser-session allocation so malformed or oversized requests do not consume provider or browser
+resources.
+
 ## Core Agent Options
 
 | Variable | Default | Description |
@@ -19,8 +26,8 @@ Unless otherwise noted, boolean flags treat any of `1`, `true`, `yes`, `on` (cas
 | `MCP_MODEL_PROVIDER` | `anthropic` | LLM provider name passed to the LangChain factory. Supported values: `anthropic`, `openai`, `deepseek`, `gemini`, `ollama`, `azure_openai`. |
 | `MCP_MODEL_NAME` | `claude-3-5-sonnet-20241022` | Model identifier sent to the provider. Each provider supports its own model list. |
 | `MCP_TEMPERATURE` | `0.3` | Sampling temperature for the model. Parsed as float. |
-| `MCP_MAX_STEPS` | `30` | Maximum number of reasoning/action steps before aborting the run. Parsed as integer. |
-| `MCP_MAX_ACTIONS_PER_STEP` | `5` | Limits how many tool invocations the agent may issue in a single step. Parsed as integer. |
+| `MCP_MAX_STEPS` | `30` | Maximum number of reasoning/action steps before aborting the run. Valid range: 1–100; invalid or out-of-range values use the default. |
+| `MCP_MAX_ACTIONS_PER_STEP` | `5` | Limits how many tool invocations the agent may issue in a single step. Valid range: 1–20; invalid or out-of-range values use the default. |
 | `MCP_USE_VISION` | `true` | Enables vision features within the agent (element snapshots). |
 | `MCP_TOOL_CALL_IN_CONTENT` | `true` | Whether tool call payloads are expected inside the model response content. |
 
@@ -67,6 +74,7 @@ These options are parsed by [`BrowserEnvironmentConfig.from_env`](../src/mcp_bro
 
 - When `CHROME_PERSISTENT_SESSION` is true and `CHROME_USER_DATA` is not provided, the server logs a warning and the session falls back to ephemeral storage.
 - Remote debugging settings (`CHROME_DEBUGGING_HOST` / `CHROME_DEBUGGING_PORT`) are optional and ignored if invalid values are supplied. The server logs a warning and continues with defaults.
+- CDP URLs are passed to `browser-use` but redacted from debug output because user-info and query parameters may carry credentials.
 
 ## Additional Environment Variables
 

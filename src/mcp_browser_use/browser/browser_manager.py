@@ -176,6 +176,10 @@ def create_browser_session(
 
     logger.debug(
         "Creating BrowserSession with kwargs: %s",
-        {k: v for k, v in kwargs.items() if k != "proxy"},
+        {
+            key: "<redacted>" if key == "cdp_url" else value
+            for key, value in kwargs.items()
+            if key != "proxy"
+        },
     )
     return BrowserSession(**kwargs)

@@ -25,6 +25,47 @@ logger = logging.getLogger(__name__)
 
 app = FastMCP("mcp_browser_use")
 
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+_MAX_TASK_CHARS = 20_000
+_MAX_CONTEXT_CHARS = 20_000
+
+
+def _validated_tool_input(task: str, add_infos: str) -> tuple[str, str]:
+    """Normalize and bound untrusted MCP tool input before allocating resources."""
+
+    task = task.strip()
+    add_infos = add_infos.strip()
+
+    if not task:
+        raise ValueError("task must not be empty")
+    if len(task) > _MAX_TASK_CHARS:
+        raise ValueError(f"task must not exceed {_MAX_TASK_CHARS} characters")
+    if len(add_infos) > _MAX_CONTEXT_CHARS:
+        raise ValueError(f"add_infos must not exceed {_MAX_CONTEXT_CHARS} characters")
+
+    return task, add_infos
+
+
+def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    """Read an integer setting and clamp invalid or unsafe values to its default."""
+
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        logger.warning("Invalid integer for %s, using default=%s", name, default)
+        return default
+
+    if not minimum <= value <= maximum:
+        logger.warning(
+            "%s must be between %s and %s, using default=%s",
+            name,
+            minimum,
+            maximum,
+            default,
+        )
+        return default
+    return value
+
 
 @app.tool()
 async def run_browser_agent(task: str, add_infos: str = "") -> str:
@@ -35,6 +76,8 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
     :param add_infos: Additional information or context for the agent.
     :return: The final result string from the agent run.
     """
+
+    task, add_infos = _validated_tool_input(task, add_infos)
 
     browser_session: Optional[Browser] = None
     agent_state = AgentState()
@@ -56,21 +99,15 @@ async def run_browser_agent(task: str, add_infos: str = "") -> str:
                 logger.warning(f"Invalid float for {env_var}, using default={default}")
                 return default
 
-        def safe_int(env_var: str, default: int) -> int:
-            """Safely parse an int from an environment variable."""
-            try:
-                return int(os.getenv(env_var, str(default)))
-            except ValueError:
-                logger.warning(f"Invalid int for {env_var}, using default={default}")
-                return default
-
         # Get environment variables with defaults
         temperature = safe_float("MCP_TEMPERATURE", 0.3)
-        max_steps = safe_int("MCP_MAX_STEPS", 30)
-        use_vision = os.getenv("MCP_USE_VISION", "true").lower() == "true"
-        max_actions_per_step = safe_int("MCP_MAX_ACTIONS_PER_STEP", 5)
+        max_steps = _env_int("MCP_MAX_STEPS", 30, minimum=1, maximum=100)
+        use_vision = os.getenv("MCP_USE_VISION", "true").lower() in _TRUE_VALUES
+        max_actions_per_step = _env_int(
+            "MCP_MAX_ACTIONS_PER_STEP", 5, minimum=1, maximum=20
+        )
         tool_call_in_content = (
-            os.getenv("MCP_TOOL_CALL_IN_CONTENT", "true").lower() == "true"
+            os.getenv("MCP_TOOL_CALL_IN_CONTENT", "true").lower() in _TRUE_VALUES
         )
 
         # Prepare LLM
