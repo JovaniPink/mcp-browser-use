@@ -8,7 +8,7 @@
 
 ## Overview
 
-This repository provides a production-ready wrapper around the `browser-use` automation engine. It exposes a single MCP tool (`run_browser_agent`) that orchestrates a browser session, executes the `browser-use` agent, and returns the final result back to the client. The refactored layout focuses on keeping configuration in one place, improving testability, and keeping `browser-use` upgrades isolated from MCP specific code.
+This repository provides a beta MCP wrapper around the `browser-use` automation engine. It exposes a single MCP tool (`run_browser_agent`) that orchestrates a browser session, executes the `browser-use` agent, and returns the final result to the client. The layout keeps configuration in one place, makes security boundaries testable, and isolates upstream `browser-use` migrations from the MCP interface.
 
 ### Key Capabilities
 
@@ -25,7 +25,7 @@ This repository provides a production-ready wrapper around the `browser-use` aut
 ├── documentation/
 │   ├── CONFIGURATION.md      # Detailed configuration reference
 │   └── SECURITY.md           # Security considerations for running the server
-├── .env.example            # Example environment variables for local development
+├── sample.env.env           # Example environment variables for local development
 ├── src/mcp_browser_use/
 │   ├── agent/                # Custom agent, prompts, message history, and views
 │   ├── browser/              # Browser session factory and persistence helpers
@@ -53,7 +53,7 @@ cd mcp-browser-use
 uv sync
 ```
 
-Copy `sample.env` to `.env` (or export the variables in another way) and update the values for the providers you plan to use.
+Copy `sample.env.env` to `.env` (or export the variables another way) and update only the providers you plan to use. Never commit the populated `.env` file.
 
 ### Launching the server
 
@@ -103,14 +103,24 @@ Use `.env` + [`python-dotenv`](https://pypi.org/project/python-dotenv/) or your 
 ## Running Tests
 
 ```bash
-uv run pytest
+uv run python -m pytest -q
 ```
 
-The tests cover the custom agent behaviour, browser session factory, and other utility helpers.
+The tests cover custom-agent behavior, browser configuration, MCP input limits, secret redaction,
+and utility helpers. A dependency update is not merge-ready merely because imports or unit tests
+pass; the resolved environment must also pass its dependency and security checks.
 
 ## Security
 
 Controlling a full browser instance remotely can grant broad access to the host machine. Review [documentation/SECURITY.md](documentation/SECURITY.md) before exposing the server to untrusted environments.
+
+The MCP tool trims and bounds task/context input before allocating a model or browser session.
+Runtime step limits are constrained, proxy settings are omitted from debug logs, and CDP endpoint
+values are redacted because they may contain credentials.
+
+The Python 3.14/browser-use dependency migration remains held in
+[#45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until upstream permits patched
+transitive versions. Do not force incompatible overrides or suppress the audit findings.
 
 ## Contributing
 

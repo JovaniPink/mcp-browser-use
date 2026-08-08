@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import logging
 
 import pytest
 
@@ -53,3 +54,26 @@ def test_create_browser_session_preserves_computed_cdp_url(monkeypatch):
 
     assert isinstance(session, DummyBrowserSession)
     assert captured_kwargs["cdp_url"] == "http://localhost:9000"
+
+
+def test_create_browser_session_redacts_cdp_url_from_debug_log(monkeypatch, caplog):
+    """Credential-bearing CDP URLs are passed through but never logged."""
+
+    cdp_url = "wss://user:secret@browser.example/devtools?token=sensitive"
+    monkeypatch.setenv("BROWSER_USE_CDP_URL", cdp_url)
+
+    captured_kwargs: dict[str, object] = {}
+
+    class DummyBrowserSession:
+        def __init__(self, **kwargs):
+            captured_kwargs.update(kwargs)
+
+    monkeypatch.setattr(browser_manager, "BrowserSession", DummyBrowserSession)
+
+    with caplog.at_level(logging.DEBUG, logger=browser_manager.__name__):
+        browser_manager.create_browser_session()
+
+    assert captured_kwargs["cdp_url"] == cdp_url
+    assert "secret" not in caplog.text
+    assert "sensitive" not in caplog.text
+    assert "'cdp_url': '<redacted>'" in caplog.text
