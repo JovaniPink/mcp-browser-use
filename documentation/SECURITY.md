@@ -44,6 +44,16 @@ Proxying changes where traffic exits but is not a sandbox. Apply network policy
 outside the process when destinations must be enforced independently of agent
 instructions.
 
+## Dependency integrity
+
+Use the committed `uv.lock` with `--frozen` for installs, tests, and runtime
+commands. A compatible environment (`uv pip check`) and a clean vulnerability
+audit are separate requirements. The current browser-use 0.13.7 graph has an
+upstream security hold tracked in
+[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45); do not
+allowlist findings or override browser-use's exact transitive pins. This branch
+must remain unmerged until the issue's exact-head exit criteria pass.
+
 ## Reporting vulnerabilities
 
 Open a private GitHub security advisory for vulnerabilities that could expose

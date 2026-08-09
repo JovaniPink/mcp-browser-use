@@ -1,6 +1,6 @@
 # Build with Python 3.14 and copy the pinned uv binary from its versioned image.
 FROM python:3.14-slim-bookworm AS uv
-COPY --from=ghcr.io/astral-sh/uv:0.12.2 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.3 /uv /uvx /bin/
 
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends build-essential \
@@ -52,6 +52,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV BROWSER_USE_HEADLESS=true
 ENV CHROME_PATH=/usr/bin/chromium
 
-# when running the container, add --db-path and a bind mount to the host's db file
 USER appuser
 ENTRYPOINT ["mcp-browser-use"]

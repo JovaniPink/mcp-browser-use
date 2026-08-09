@@ -24,7 +24,7 @@ change. Each request owns its browser session and always attempts cleanup.
 ## Requirements
 
 - Python 3.11 through 3.14
-- [`uv`](https://docs.astral.sh/uv/) 0.12.2 or newer
+- [`uv`](https://docs.astral.sh/uv/) 0.12.3 or newer
 - Chrome/Chromium, unless connecting through `BROWSER_USE_CDP_URL`
 - an API key for the selected model provider
 
@@ -96,11 +96,11 @@ characters each, bounds `MCP_MAX_STEPS` to 1–100, and bounds
 ## Development and validation
 
 ```sh
-python3.14 -m pip install uv==0.12.2
+python3.14 -m pip install uv==0.12.3
 uv sync --frozen --dev
-uv run ruff check .
-uv run ruff format --check .
-uv run pytest -q
+uv run --frozen ruff check .
+uv run --frozen ruff format --check .
+uv run --frozen pytest -q
 uv pip check
 uv export --frozen --no-dev --no-emit-project \
   --format requirements-txt --output-file /tmp/mcp-browser-use-requirements.txt
@@ -110,6 +110,19 @@ uvx --from pip-audit==2.10.1 pip-audit \
 
 CI runs those gates on Python 3.12 and 3.14, then builds both Docker targets and
 verifies the runtime image can import the server and execute Chromium.
+
+### Dependency release boundary
+
+The public-API migration fixes fresh-install launch failures, but it is not
+merge-ready while [issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45)
+remains open. `browser-use==0.13.7` currently hard-pins vulnerable versions of
+aiohttp, Click, MCP, Pillow, and pypdf. The exact exported runtime graph reports
+53 advisories. Do not suppress those findings, force incompatible transitive
+overrides, or treat passing imports and tests as a substitute for the audit.
+
+Merge only after browser-use publishes compatible metadata, `uv.lock` is
+refreshed without overrides, `uv pip check` passes, and the exact `pip-audit`,
+Python matrix, and container gates are green on the same head.
 
 ## Docker
 
