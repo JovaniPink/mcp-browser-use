@@ -38,12 +38,17 @@ git clone https://github.com/JovaniPink/mcp-browser-use.git
 cd mcp-browser-use
 cp .env.example .env
 uv sync --frozen
-uv run mcp-browser-use
+uv run --frozen mcp-browser-use
 ```
 
 The console command starts FastMCP over stdio. Configure it as a child process
 of your MCP client; do not start it separately and then point the client at a
 TCP port.
+
+The included `smithery.yaml` uses the same frozen command and provider contract.
+It asks for one provider-neutral API key and maps that key to only the selected
+provider. It does not assume a CDP port; provide an explicit authenticated CDP
+URL only when attaching to an existing browser is intentional.
 
 Example client configuration:
 
@@ -108,8 +113,11 @@ uvx --from pip-audit==2.10.1 pip-audit \
   -r /tmp/mcp-browser-use-requirements.txt
 ```
 
-CI runs those gates on Python 3.12 and 3.14, then builds both Docker targets and
-verifies the runtime image can import the server and execute Chromium.
+CI runs the functional gates on Python 3.11, 3.12, 3.13, and 3.14, then builds
+both Docker targets and verifies the runtime image can import the server and
+execute Chromium. A separate required job exports the exact runtime graph and
+runs `pip-audit`, so an upstream security hold remains visible without
+mislabeling the functional Python matrix as failed.
 
 ### Dependency release boundary
 

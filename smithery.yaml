@@ -1,72 +1,110 @@
-# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+# Smithery local session configuration: https://smithery.ai/docs/build/session-config
 
 startCommand:
   type: stdio
   configSchema:
-    # JSON Schema defining the configuration options for the MCP.
     type: object
     required:
-      - openaiApiKey
-      - anthropicApiKey
       - mcpModelProvider
       - mcpModelName
     properties:
-      openaiApiKey:
+      modelApiKey:
         type: string
-        description: API key for OpenAI services.
-      anthropicApiKey:
+        description: API key for the selected provider. Leave unset only for Ollama.
+      modelEndpoint:
         type: string
-        description: API key for Anthropic services.
-      googleApiKey:
+        description: Optional endpoint override for Anthropic, Azure OpenAI, DeepSeek, Ollama, or OpenAI.
+      azureOpenaiDeployment:
         type: string
-        description: API key for Google services (optional).
-      azureOpenaiEndpoint:
+        description: Azure OpenAI deployment name when that provider is selected.
+      azureOpenaiApiVersion:
         type: string
-        description: Azure OpenAI endpoint (optional).
-      azureOpenaiApiKey:
+        default: 2024-12-01-preview
+        description: Azure OpenAI API version.
+      browserUseCdpUrl:
         type: string
-        description: Azure OpenAI API key (optional).
+        description: Explicit authenticated CDP URL. Leave unset to launch a fresh browser.
+      browserUseAllowedDomains:
+        type: string
+        description: Optional comma-separated navigation allowlist.
+      browserUseHeadless:
+        type: boolean
+        default: true
+        description: Launch a fresh browser without a visible window.
+      browserUseDisableSecurity:
+        type: boolean
+        default: false
+        description: Disable browser security only for isolated disposable testing.
       chromePath:
         type: string
-        description: Path to Chrome executable (optional).
+        description: Optional path to a Chrome or Chromium executable.
       chromeUserData:
         type: string
-        description: Path to Chrome user data directory (optional).
-      chromeDebuggingPort:
-        type: string
-        default: "9222"
-        description: Chrome debugging port. Default is 9222.
-      chromeDebuggingHost:
-        type: string
-        default: localhost
-        description: Chrome debugging host. Default is localhost.
+        description: Optional profile directory used only when persistence is enabled.
       chromePersistentSession:
         type: boolean
         default: false
-        description: Keep browser open between tasks.
+        description: Reuse the configured Chrome profile between tasks.
       mcpModelProvider:
         type: string
-        description: Model provider (e.g., anthropic, openai).
+        enum:
+          - anthropic
+          - azure_openai
+          - browser_use
+          - deepseek
+          - gemini
+          - ollama
+          - openai
+        default: anthropic
+        description: Model provider used by browser-use.
       mcpModelName:
         type: string
-        description: Model name.
+        default: claude-sonnet-4-6
+        description: Provider-specific model name.
       mcpTemperature:
         type: number
         default: 0.3
-        description: Model temperature.
+        description: Model temperature passed to providers that support it.
       mcpMaxSteps:
-        type: number
+        type: integer
+        minimum: 1
+        maximum: 100
         default: 30
-        description: Max steps for model.
+        description: Maximum browser-agent steps.
       mcpUseVision:
         type: boolean
         default: true
-        description: Use vision capabilities.
+        description: Allow the model to use browser screenshots.
       mcpMaxActionsPerStep:
-        type: number
+        type: integer
+        minimum: 1
+        maximum: 20
         default: 5
-        description: Max actions per step.
+        description: Maximum browser actions in one model step.
   commandFunction:
-    # A function that produces the CLI command to start the MCP on stdio.
     |-
-    (config) => ({ command: 'uv', args: ['run', 'mcp-browser-use'], env: { OPENAI_API_KEY: config.openaiApiKey, ANTHROPIC_API_KEY: config.anthropicApiKey, GOOGLE_API_KEY: config.googleApiKey, AZURE_OPENAI_ENDPOINT: config.azureOpenaiEndpoint, AZURE_OPENAI_API_KEY: config.azureOpenaiApiKey, CHROME_PATH: config.chromePath, CHROME_USER_DATA: config.chromeUserData, CHROME_DEBUGGING_PORT: config.chromeDebuggingPort || '9222', CHROME_DEBUGGING_HOST: config.chromeDebuggingHost || 'localhost', CHROME_PERSISTENT_SESSION: config.chromePersistentSession, MCP_MODEL_PROVIDER: config.mcpModelProvider, MCP_MODEL_NAME: config.mcpModelName, MCP_TEMPERATURE: config.mcpTemperature || 0.3, MCP_MAX_STEPS: config.mcpMaxSteps || 30, MCP_USE_VISION: config.mcpUseVision, MCP_MAX_ACTIONS_PER_STEP: config.mcpMaxActionsPerStep || 5 } })
+    (config) => {
+      const provider = config.mcpModelProvider || 'anthropic';
+      const keyNames = { anthropic: 'ANTHROPIC_API_KEY', azure_openai: 'AZURE_OPENAI_API_KEY', browser_use: 'BROWSER_USE_API_KEY', deepseek: 'DEEPSEEK_API_KEY', gemini: 'GOOGLE_API_KEY', openai: 'OPENAI_API_KEY' };
+      const endpointNames = { anthropic: 'ANTHROPIC_API_ENDPOINT', azure_openai: 'AZURE_OPENAI_ENDPOINT', deepseek: 'DEEPSEEK_ENDPOINT', ollama: 'OLLAMA_HOST', openai: 'OPENAI_ENDPOINT' };
+      const env = {
+        MCP_MODEL_PROVIDER: provider,
+        MCP_MODEL_NAME: config.mcpModelName || 'claude-sonnet-4-6',
+        MCP_TEMPERATURE: String(config.mcpTemperature ?? 0.3),
+        MCP_MAX_STEPS: String(config.mcpMaxSteps ?? 30),
+        MCP_USE_VISION: String(config.mcpUseVision ?? true),
+        MCP_MAX_ACTIONS_PER_STEP: String(config.mcpMaxActionsPerStep ?? 5),
+        BROWSER_USE_HEADLESS: String(config.browserUseHeadless ?? true),
+        BROWSER_USE_DISABLE_SECURITY: String(config.browserUseDisableSecurity ?? false),
+        CHROME_PERSISTENT_SESSION: String(config.chromePersistentSession ?? false),
+      };
+      if (config.modelApiKey && keyNames[provider]) env[keyNames[provider]] = config.modelApiKey;
+      if (config.modelEndpoint && endpointNames[provider]) env[endpointNames[provider]] = config.modelEndpoint;
+      if (config.azureOpenaiDeployment) env.AZURE_OPENAI_DEPLOYMENT = config.azureOpenaiDeployment;
+      if (config.azureOpenaiApiVersion) env.AZURE_OPENAI_API_VERSION = config.azureOpenaiApiVersion;
+      if (config.browserUseCdpUrl) env.BROWSER_USE_CDP_URL = config.browserUseCdpUrl;
+      if (config.browserUseAllowedDomains) env.BROWSER_USE_ALLOWED_DOMAINS = config.browserUseAllowedDomains;
+      if (config.chromePath) env.CHROME_PATH = config.chromePath;
+      if (config.chromeUserData) env.CHROME_USER_DATA = config.chromeUserData;
+      return { command: 'uv', args: ['run', '--frozen', 'mcp-browser-use'], env };
+    }
