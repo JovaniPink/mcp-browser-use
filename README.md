@@ -113,6 +113,8 @@ pass; the resolved environment must also pass its dependency and security checks
 ## Security
 
 Controlling a full browser instance remotely can grant broad access to the host machine. Review [documentation/SECURITY.md](documentation/SECURITY.md) before exposing the server to untrusted environments.
+The complete documentation map and active dependency decision record are in
+[documentation/README.md](documentation/README.md).
 
 The MCP tool trims and bounds task/context input before allocating a model or browser session.
 Runtime step limits are constrained, proxy settings are omitted from debug logs, and CDP endpoint
