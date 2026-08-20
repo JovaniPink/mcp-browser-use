@@ -37,6 +37,15 @@ def test_smithery_maps_only_the_selected_provider_credentials() -> None:
     assert "anthropicApiKey" not in config
 
 
+def test_smithery_requires_a_key_for_every_hosted_provider() -> None:
+    config = _config_text()
+
+    assert "not:\n                const: ollama" in config
+    assert "then:\n          required:\n            - modelApiKey" in config
+    assert "provider !== 'ollama' && !config.modelApiKey" in config
+    assert "modelApiKey is required for non-Ollama providers" in config
+
+
 def test_smithery_preserves_false_and_zero_values() -> None:
     config = _config_text()
 

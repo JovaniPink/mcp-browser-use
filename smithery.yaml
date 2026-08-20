@@ -7,6 +7,17 @@ startCommand:
     required:
       - mcpModelProvider
       - mcpModelName
+    allOf:
+      - if:
+          properties:
+            mcpModelProvider:
+              not:
+                const: ollama
+          required:
+            - mcpModelProvider
+        then:
+          required:
+            - modelApiKey
     properties:
       modelApiKey:
         type: string
@@ -85,6 +96,9 @@ startCommand:
     |-
     (config) => {
       const provider = config.mcpModelProvider || 'anthropic';
+      if (provider !== 'ollama' && !config.modelApiKey) {
+        throw new Error('modelApiKey is required for non-Ollama providers');
+      }
       const keyNames = { anthropic: 'ANTHROPIC_API_KEY', azure_openai: 'AZURE_OPENAI_API_KEY', browser_use: 'BROWSER_USE_API_KEY', deepseek: 'DEEPSEEK_API_KEY', gemini: 'GOOGLE_API_KEY', openai: 'OPENAI_API_KEY' };
       const endpointNames = { anthropic: 'ANTHROPIC_API_ENDPOINT', azure_openai: 'AZURE_OPENAI_ENDPOINT', deepseek: 'DEEPSEEK_ENDPOINT', ollama: 'OLLAMA_HOST', openai: 'OPENAI_ENDPOINT' };
       const env = {

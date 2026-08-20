@@ -46,9 +46,11 @@ of your MCP client; do not start it separately and then point the client at a
 TCP port.
 
 The included `smithery.yaml` uses the same frozen command and provider contract.
-It asks for one provider-neutral API key and maps that key to only the selected
-provider. It does not assume a CDP port; provide an explicit authenticated CDP
-URL only when attaching to an existing browser is intentional.
+It requires one provider-neutral API key for every hosted provider and maps that
+key to only the selected provider. Ollama is the sole keyless option. The schema
+and launcher both enforce that boundary so an invalid hosted-provider session
+cannot start. Smithery does not assume a CDP port; provide an explicit
+authenticated CDP URL only when attaching to an existing browser is intentional.
 
 Example client configuration:
 
