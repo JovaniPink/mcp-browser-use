@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-08-17
+- **Last verified:** 2026-08-20
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -18,6 +18,12 @@ Separately, main has no committed `uv.lock` even though the Dockerfile mounts it
 during the build. [PR #48](https://github.com/JovaniPink/mcp-browser-use/pull/48)
 pins container images, but merging it alone would not establish a reproducible,
 audited application environment.
+
+The public registries still resolved the two tags in PR #48 to their committed
+manifest-list digests on 2026-08-20. A repository test now rejects unpinned
+external Docker references and verifies that Renovate remains configured to
+refresh Docker digests. This proves the image-reference contract only; the
+missing safe application lock still prevents a complete container build.
 
 ## Decision
 

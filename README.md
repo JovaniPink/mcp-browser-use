@@ -124,6 +124,13 @@ The Python 3.14/browser-use dependency migration remains held in
 [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until upstream permits patched
 transitive versions. Do not force incompatible overrides or suppress the audit findings.
 
+External Docker base images are pinned to immutable manifest digests, and
+Renovate is configured to propose reviewed digest refreshes. Those pins prevent
+silent tag drift; they do not repair the missing safe application lock or make
+the current container path release-ready. The active boundary and reversal
+criteria are recorded in
+[`documentation/decisions/0001-hold-unsafe-runtime-resolution.md`](documentation/decisions/0001-hold-unsafe-runtime-resolution.md).
+
 ## Contributing
 
 1. Fork the repository
