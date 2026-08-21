@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-08-17
+- **Last verified:** 2026-08-21
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -31,6 +31,11 @@ audited application environment.
 
 This is a release hold, not a conclusion that every upstream advisory is
 exploitable through this server.
+
+On 2026-08-21, `browser-use` 0.13.8 reduced the exact runtime audit from 53
+advisories in five packages to six advisories in three packages by updating
+aiohttp and Pillow. Its metadata still pins Click 8.3.1, MCP 1.26.0, and pypdf
+6.14.2 below their audited fixes, so the hold remains active.
 
 ## Consequences
 

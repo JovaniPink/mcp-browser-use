@@ -16,7 +16,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "browser-use==0.13.7",
+    "browser-use==0.13.8",
     "fastmcp==3.4.6",
     "python-dotenv==1.2.2",
 ]

@@ -125,10 +125,12 @@ mislabeling the functional Python matrix as failed.
 
 The public-API migration fixes fresh-install launch failures, but it is not
 merge-ready while [issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45)
-remains open. `browser-use==0.13.7` currently hard-pins vulnerable versions of
-aiohttp, Click, MCP, Pillow, and pypdf. The exact exported runtime graph reports
-53 advisories. Do not suppress those findings, force incompatible transitive
-overrides, or treat passing imports and tests as a substitute for the audit.
+remains open. `browser-use==0.13.8` removes the previously reported aiohttp and
+Pillow findings, but still hard-pins vulnerable versions of Click, MCP, and
+pypdf. As verified on 2026-08-21, the exact exported runtime graph reports six
+advisories across those three packages. Do not suppress those findings, force
+incompatible transitive overrides, or treat passing imports and tests as a
+substitute for the audit.
 
 Merge only after browser-use publishes compatible metadata, `uv.lock` is
 refreshed without overrides, `uv pip check` passes, and the exact `pip-audit`,
