@@ -110,6 +110,17 @@ The tests cover custom-agent behavior, browser configuration, MCP input limits, 
 and utility helpers. A dependency update is not merge-ready merely because imports or unit tests
 pass; the resolved environment must also pass its dependency and security checks.
 
+The immutable build-input contract deliberately requires no project install, so it can run before
+a safe application lock exists:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_container_supply_chain.py' -v
+```
+
+That focused contract checks Docker image digests, full-length GitHub Action commit pins, and the
+Renovate rules that keep both kinds of pins reviewable and current. It does not replace the frozen
+application install, dependency audit, or complete container runtime gate.
+
 ## Security
 
 Controlling a full browser instance remotely can grant broad access to the host machine. Review [documentation/SECURITY.md](documentation/SECURITY.md) before exposing the server to untrusted environments.
@@ -123,6 +134,13 @@ values are redacted because they may contain credentials.
 The Python 3.14/browser-use dependency migration remains held in
 [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until upstream permits patched
 transitive versions. Do not force incompatible overrides or suppress the audit findings.
+
+External Docker base images are pinned to immutable manifest digests, and
+third-party GitHub Actions are pinned to full commit SHAs. A dependency-free hosted contract checks
+those references, while Renovate is configured to propose reviewed digest refreshes. Those pins
+prevent silent input drift; they do not repair the missing safe application lock or make the current
+container path release-ready. The active boundary and reversal criteria are recorded in
+[`documentation/decisions/0001-hold-unsafe-runtime-resolution.md`](documentation/decisions/0001-hold-unsafe-runtime-resolution.md).
 
 ## Contributing
 
