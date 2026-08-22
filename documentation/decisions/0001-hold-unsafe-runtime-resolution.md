@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-08-20
+- **Last verified:** 2026-08-22
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -20,10 +20,16 @@ pins container images, but merging it alone would not establish a reproducible,
 audited application environment.
 
 The public registries still resolved the two tags in PR #48 to their committed
-manifest-list digests on 2026-08-20. A repository test now rejects unpinned
+manifest-list digests on 2026-08-22. A repository test now rejects unpinned
 external Docker references and verifies that Renovate remains configured to
 refresh Docker digests. This proves the image-reference contract only; the
 missing safe application lock still prevents a complete container build.
+
+The contract also rejects mutable third-party GitHub Action references and runs
+in a dedicated hosted workflow without installing the unresolved application
+graph. Renovate keeps both Docker digests and Action commit pins current. This
+separates immutable build-input evidence from the still-blocked application,
+browser, and container-runtime evidence.
 
 ## Decision
 
