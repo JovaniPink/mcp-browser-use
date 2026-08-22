@@ -48,9 +48,15 @@ TCP port.
 The included `smithery.yaml` uses the same frozen command and provider contract.
 It requires one provider-neutral API key for every hosted provider and maps that
 key to only the selected provider. Ollama is the sole keyless option. The schema
-and launcher both enforce that boundary so an invalid hosted-provider session
-cannot start. Smithery does not assume a CDP port; provide an explicit
-authenticated CDP URL only when attaching to an existing browser is intentional.
+uses Smithery's documented [JSON Schema configuration
+contract](https://smithery.ai/docs/build/session-config) and JSON Schema
+[`if`/`then` conditional
+validation](https://json-schema.org/understanding-json-schema/reference/conditionals)
+to require the key. The command function repeats the check before returning a
+process command, so a keyless hosted-provider session fails closed even if a
+client does not surface the conditional field guidance. Smithery does not assume
+a CDP port; provide an explicit authenticated CDP URL only when attaching to an
+existing browser is intentional.
 
 Example client configuration:
 
