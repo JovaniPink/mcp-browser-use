@@ -26,7 +26,7 @@ change. Each request owns its browser session and always attempts cleanup.
 - Python 3.11 through 3.14
 - [`uv`](https://docs.astral.sh/uv/) 0.12.3 or newer
 - Chrome/Chromium, unless connecting through `BROWSER_USE_CDP_URL`
-- an API key for the selected model provider
+- an API key for the selected hosted model provider (Ollama is keyless)
 
 The production container includes Chromium and runs the MCP process as UID
 10001. It defaults to headless browsing.
@@ -38,12 +38,15 @@ git clone https://github.com/JovaniPink/mcp-browser-use.git
 cd mcp-browser-use
 cp .env.example .env
 uv sync --frozen
-uv run --frozen mcp-browser-use
+uv run --frozen --env-file .env mcp-browser-use
 ```
 
 The console command starts FastMCP over stdio. Configure it as a child process
 of your MCP client; do not start it separately and then point the client at a
 TCP port.
+
+The server does not load `.env` itself. The command above loads it explicitly;
+the client configuration below instead injects environment values directly.
 
 The included `smithery.yaml` uses the same frozen command and provider contract.
 It requires one provider-neutral API key for every hosted provider and maps that
@@ -129,18 +132,18 @@ mislabeling the functional Python matrix as failed.
 
 ### Dependency release boundary
 
-The public-API migration fixes fresh-install launch failures, but it is not
-merge-ready while [issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45)
-remains open. `browser-use==0.13.8` removes the previously reported aiohttp and
-Pillow findings, but still hard-pins vulnerable versions of Click, MCP, and
-pypdf. As verified on 2026-08-21, the exact exported runtime graph reports six
-advisories across those three packages. Do not suppress those findings, force
-incompatible transitive overrides, or treat passing imports and tests as a
-substitute for the audit.
+The public-API migration fixes fresh-install launch failures. The candidate pins
+`browser-use==0.13.10` and `fastmcp==4.0.3` use compatible MCP 2 dependencies,
+without overriding upstream constraints. On 2026-09-05, the local Python 3.14
+suite, real in-process automatic/legacy protocol tests, dependency compatibility
+check and exact runtime audit passed. This is local candidate evidence, not a
+hosted-check, container, provider or release acceptance claim.
 
-Merge only after browser-use publishes compatible metadata, `uv.lock` is
-refreshed without overrides, `uv pip check` passes, and the exact `pip-audit`,
-Python matrix, and container gates are green on the same head.
+[Issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) retains the
+release prerequisites. Require the exact committed head to pass the runtime
+audit, full Python matrix and container gates before merge. Do not suppress
+advisories or force incompatible transitive overrides. The historical hold and
+its original evidence remain in the decision log.
 
 ## Docker
 
@@ -150,6 +153,9 @@ docker run --rm mcp-browser-use:test
 docker build -t mcp-browser-use:local .
 docker run --rm -i --env-file .env mcp-browser-use:local
 ```
+
+The Docker context excludes local virtual environments, Git metadata, `.env`
+files and build caches; pass provider secrets only at runtime.
 
 The MCP protocol uses stdin/stdout, so keep `-i`. Browser sessions are ephemeral
 unless you explicitly mount a profile and enable persistence.
@@ -164,8 +170,8 @@ were removed. See [SECURITY.md](./documentation/SECURITY.md).
 
 The complete documentation map and active dependency decision record are in
 [documentation/README.md](documentation/README.md). The Python 3.14/browser-use
-dependency migration remains held until upstream permits a clean production
-resolution; do not suppress the audit or force incompatible transitive versions.
+dependency migration remains unreleased until all exact-head release gates pass;
+do not suppress the audit or force incompatible transitive versions.
 
 ## Troubleshooting
 

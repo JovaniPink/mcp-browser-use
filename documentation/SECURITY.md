@@ -48,12 +48,13 @@ instructions.
 
 Use the committed `uv.lock` with `--frozen` for installs, tests, and runtime
 commands. A compatible environment (`uv pip check`) and a clean vulnerability
-audit are separate requirements. The current browser-use 0.13.8 graph still
-contains six advisories in three exactly pinned packages and has an upstream
-security hold tracked in
-[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45); do not
-allowlist findings or override browser-use's exact transitive pins. This branch
-must remain unmerged until the issue's exact-head exit criteria pass.
+audit are separate requirements. The candidate pairs browser-use 0.13.10 with
+FastMCP 4.0.3 to admit patched MCP 2 dependencies without overrides. Its local
+Python 3.14 runtime audit passed on 2026-09-05; the complete exact-head release
+prerequisites remain tracked in
+[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45). A local audit
+does not establish hosted matrix, container, provider or live-browser acceptance.
+Do not allowlist findings or override upstream exact transitive pins.
 
 ## Reporting vulnerabilities
 

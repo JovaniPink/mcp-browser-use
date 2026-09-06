@@ -32,7 +32,7 @@ FROM uv AS test
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen --dev --no-editable
 
-CMD ["uv", "run", "--frozen", "pytest", "-q"]
+CMD ["/app/.venv/bin/python", "-m", "pytest", "-q"]
 
 FROM python:3.14-slim-bookworm
 
