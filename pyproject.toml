@@ -1,7 +1,7 @@
 [project]
 name = "mcp_browser_use"
 version = "0.1.0"
-description = "This Python project is a FastAPI server implementing MCP Server protocol Browser automation via browser-use library."
+description = "An MCP server for browser automation through browser-use."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -9,26 +9,33 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
 ]
 
 dependencies = [
-    "pydantic>=2.11.9",
-    "uvicorn>=0.37.0",
-    "browser-use>=0.7.9",
-    "fastapi>=0.117.1",
-    "fastmcp>=2.12.4",
-    "instructor>=1.11.3",
-    "langchain>=0.3.27",
-    "langchain-google-genai>=2.1.1",
-    "langchain-openai>=0.2.14",
-    "langchain-anthropic>=0.3.20",
-    "langchain-ollama>=0.2.2",
-    "openai>=1.109.1",
-    "pillow>=11.3.0",
-    "python-dotenv>=1.1.1",
-    "pyperclip>=1.11.0",
+    "browser-use==0.13.10",
+    "fastmcp==4.0.3",
+    "python-dotenv==1.2.2",
 ]
+
+[dependency-groups]
+dev = [
+    "jsonschema==4.26.0",
+    "pyyaml==6.0.3",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.3.0",
+    "ruff==0.16.2",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [build-system]
 requires = ["hatchling"]

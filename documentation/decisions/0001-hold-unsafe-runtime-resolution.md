@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-08-17
+- **Last verified:** 2026-08-21
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -32,6 +32,11 @@ audited application environment.
 This is a release hold, not a conclusion that every upstream advisory is
 exploitable through this server.
 
+On 2026-08-21, `browser-use` 0.13.8 reduced the exact runtime audit from 53
+advisories in five packages to six advisories in three packages by updating
+aiohttp and Pillow. Its metadata still pins Click 8.3.1, MCP 1.26.0, and pypdf
+6.14.2 below their audited fixes, so the hold remains active.
+
 ## Consequences
 
 - The modernization and image-pin pull requests remain unmerged.
@@ -53,3 +58,16 @@ The resulting exact head must then provide a committed reproducible lock, clean
 dependency conflict and vulnerability checks, the full Python matrix, a
 container build and smoke test using that lock, and current MCP/browser boundary
 tests. Record the replacement decision instead of rewriting this history.
+
+## 2026-09-05 candidate follow-through
+
+The 0.13.8 frozen head now reports ten advisories across the same three packages.
+Current [browser-use metadata](https://pypi.org/pypi/browser-use/0.13.10/json)
+permits patched versions but requires MCP 2, outside FastMCP 3.4.6's range.
+The compatible candidate therefore pairs browser-use 0.13.10 with FastMCP 4.0.3,
+following the [FastMCP migration guide](https://gofastmcp.com/getting-started/upgrading/from-fastmcp-3).
+Local Python 3.14 tests, automatic/legacy protocol exchanges, dependency
+compatibility and the runtime audit pass without overrides or suppressions.
+This does not reverse the release hold: complete matrix, container and hosted
+checks on the committed candidate remain necessary, as does separate merge
+authorization. This note supplements the historical evidence above.
