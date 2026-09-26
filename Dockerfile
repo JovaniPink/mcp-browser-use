@@ -1,6 +1,7 @@
 # Build with Python 3.14 and copy the pinned uv binary from its versioned image.
-FROM python:3.14-slim-bookworm AS uv
-COPY --from=ghcr.io/astral-sh/uv:0.12.3 /uv /uvx /bin/
+# External images are pinned to reviewed manifest-list digests; Renovate refreshes them.
+FROM python:3.14-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56 AS uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc /uv /uvx /bin/
 
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends build-essential \
@@ -34,7 +35,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 CMD ["/app/.venv/bin/python", "-m", "pytest", "-q"]
 
-FROM python:3.14-slim-bookworm
+FROM python:3.14-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56
 
 WORKDIR /app
 

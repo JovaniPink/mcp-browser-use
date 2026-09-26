@@ -10,6 +10,18 @@ permissions:
   contents: read
 
 jobs:
+  supply-chain:
+    name: Immutable build inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      # Standard library only: this contract must not depend on the audited lock.
+      - run: python -m unittest discover -s tests -p 'test_container_supply_chain.py' -v
+
   python:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -53,3 +65,4 @@ jobs:
       - run: docker build --tag mcp-browser-use:runtime .
       - run: docker run --rm --entrypoint python mcp-browser-use:runtime -c "from mcp_browser_use.server import app; assert app.name == 'mcp_browser_use'"
       - run: docker run --rm --entrypoint chromium mcp-browser-use:runtime --version
+      - run: test "$(docker run --rm --entrypoint id mcp-browser-use:runtime -u)" = "10001"
