@@ -1,7 +1,9 @@
 # Configuration
 
 Settings are read for each `run_browser_agent` call, so model and limit changes
-do not require restarting a long-lived Python process. Load `.env` through your
+do not require restarting a long-lived Python process. The one exception is
+`MCP_MAX_CONCURRENT_RUNS`, which is read once at startup because every request
+shares the same limit. Load `.env` through your
 MCP client, shell, container runtime, or another secret-injection mechanism.
 
 ## Agent settings
@@ -9,14 +11,17 @@ MCP client, shell, container runtime, or another secret-injection mechanism.
 | Variable | Default | Contract |
 | --- | --- | --- |
 | `MCP_MODEL_PROVIDER` | `anthropic` | One of `anthropic`, `azure_openai`, `browser_use`, `deepseek`, `gemini`, `ollama`, or `openai`. |
-| `MCP_MODEL_NAME` | `claude-sonnet-4-6` | Provider-specific model identifier. |
-| `MCP_TEMPERATURE` | `0.3` | Float passed to providers that support temperature. |
+| `MCP_MODEL_NAME` | `claude-opus-5` | Provider-specific model identifier. |
+| `MCP_TEMPERATURE` | unset | Optional float clamped to 0–2. Unset leaves the provider default; current Anthropic models reject sampling parameters, so leave it unset for them. |
 | `MCP_MAX_STEPS` | `30` | Integer clamped to 1–100. |
 | `MCP_MAX_ACTIONS_PER_STEP` | `5` | Integer clamped to 1–20. |
 | `MCP_USE_VISION` | `true` | `1`, `true`, `yes`, or `on` enables screenshots. |
+| `MCP_RUN_TIMEOUT_SECONDS` | `600` | Integer clamped to 30–3600. Wall-clock limit for one run; the browser is released when it expires. |
+| `MCP_MAX_CONCURRENT_RUNS` | `1` | Integer clamped to 1–8, read at startup. Each run owns a Chromium process; extra requests wait. |
 
-Invalid numeric values fall back to their documented defaults and emit a
-warning without logging secrets.
+Invalid numeric values fall back to their documented defaults (or, for
+`MCP_TEMPERATURE`, to the provider default) and emit a warning without logging
+secrets.
 
 ## Tool input contract
 

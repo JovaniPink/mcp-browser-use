@@ -77,7 +77,7 @@ Example client configuration:
       ],
       "env": {
         "MCP_MODEL_PROVIDER": "anthropic",
-        "MCP_MODEL_NAME": "claude-sonnet-4-6",
+        "MCP_MODEL_NAME": "claude-opus-5",
         "ANTHROPIC_API_KEY": "replace-in-your-client-secret-store"
       }
     }
@@ -107,7 +107,10 @@ Supported provider values are:
 The server validates tool input before allocating a model or browser session. It
 rejects an empty task, limits both the task and optional context to 20,000
 characters each, bounds `MCP_MAX_STEPS` to 1–100, and bounds
-`MCP_MAX_ACTIONS_PER_STEP` to 1–20.
+`MCP_MAX_ACTIONS_PER_STEP` to 1–20. Each run is cut off after
+`MCP_RUN_TIMEOUT_SECONDS` (default 600), and at most `MCP_MAX_CONCURRENT_RUNS`
+runs (default 1) hold a browser at once; later requests wait for a free slot.
+The browser session is released on success, failure, and timeout.
 
 ## Development and validation
 

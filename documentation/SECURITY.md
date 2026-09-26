@@ -9,6 +9,9 @@ page as untrusted input, and treat a persistent browser profile as a credential.
   forced cleanup.
 - Task and context input is validated and bounded before provider or browser
   resources are allocated.
+- Each run has a wall-clock limit (`MCP_RUN_TIMEOUT_SECONDS`) and the number of
+  simultaneous browsers is capped (`MCP_MAX_CONCURRENT_RUNS`), so a stuck page
+  or a burst of calls cannot hold or spawn Chromium processes without bound.
 - Browser security remains enabled unless
   `BROWSER_USE_DISABLE_SECURITY=true` is explicitly set.
 - Model adapters and agent orchestration use browser-use's public API; this
@@ -36,9 +39,11 @@ page as untrusted input, and treat a persistent browser profile as a credential.
 
 ## Network and browser controls
 
-Do not enable `BROWSER_USE_DISABLE_SECURITY` for ordinary browsing. If a test
-requires it, use a disposable browser with no authenticated profile and a
-strict domain allowlist.
+Do not enable `BROWSER_USE_DISABLE_SECURITY` for ordinary browsing. It turns
+off browser protections such as the same-origin policy, so any page the agent
+visits can read data from any other origin in that browser. If a test requires
+it, use a disposable browser with no authenticated profile and a strict domain
+allowlist.
 
 Proxying changes where traffic exits but is not a sandbox. Apply network policy
 outside the process when destinations must be enforced independently of agent
@@ -49,12 +54,19 @@ instructions.
 Use the committed `uv.lock` with `--frozen` for installs, tests, and runtime
 commands. A compatible environment (`uv pip check`) and a clean vulnerability
 audit are separate requirements. The candidate pairs browser-use 0.13.10 with
-FastMCP 4.0.3 to admit patched MCP 2 dependencies without overrides. Its local
-Python 3.14 runtime audit passed on 2026-09-05; the complete exact-head release
-prerequisites remain tracked in
-[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45). A local audit
-does not establish hosted matrix, container, provider or live-browser acceptance.
-Do not allowlist findings or override upstream exact transitive pins.
+FastMCP 4.0.3, which admits patched Click, MCP 2 and pypdf without overrides.
+Its runtime audit passed on 2026-09-06. On 2026-09-26 it reported two new
+advisories in anyio 4.12.1 (CVE-2026-63374, CVE-2026-64847; fixed in 4.14.2),
+which browser-use 0.13.10 pins exactly. The release stays on hold under
+[decision 0001](decisions/0001-hold-unsafe-runtime-resolution.md) and
+[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until
+upstream publishes compatible metadata. A clean audit is a point-in-time result:
+CI re-runs it on every change, and new advisories can turn it red without a code
+change. Do not allowlist findings or override upstream exact transitive pins.
+
+External container images are pinned to manifest-list digests and GitHub
+Actions to full commit SHAs. A dependency-free CI job enforces this, and
+Renovate proposes digest refreshes for review.
 
 ## Reporting vulnerabilities
 

@@ -101,6 +101,11 @@ def test_smithery_schema_requires_a_key_for_every_hosted_provider() -> None:
 def test_smithery_preserves_false_and_zero_values() -> None:
     config = _config_text()
 
-    assert "config.mcpTemperature ?? 0.3" in config
+    # Temperature is optional (current Anthropic models reject it), but an
+    # explicit 0 must still be forwarded.
+    assert "config.mcpTemperature !== undefined" in config
+    assert "MCP_TEMPERATURE: String(" not in config
+    assert "config.mcpRunTimeoutSeconds ?? 600" in config
+    assert "config.mcpMaxConcurrentRuns ?? 1" in config
     assert "config.mcpUseVision ?? true" in config
     assert "config.browserUseHeadless ?? true" in config

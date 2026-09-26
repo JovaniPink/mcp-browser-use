@@ -1,3 +1,6 @@
+import asyncio
+import dataclasses
+
 import pytest
 
 from mcp_browser_use import server
@@ -102,3 +105,98 @@ async def test_invalid_task_is_rejected_before_resource_allocation(monkeypatch):
 
     with pytest.raises(ValueError, match="must not be empty"):
         await server.execute_browser_agent("  ")
+
+
+def test_runtime_config_defaults_leave_temperature_to_the_provider(monkeypatch):
+    for name in ("MCP_TEMPERATURE", "MCP_RUN_TIMEOUT_SECONDS", "MCP_MODEL_NAME"):
+        monkeypatch.delenv(name, raising=False)
+
+    runtime = server.AgentRuntimeConfig.from_env()
+
+    assert runtime.temperature is None
+    assert runtime.timeout_seconds == 600
+    assert runtime.model == "claude-opus-5"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    (("0.7", 0.7), ("9", 2.0), ("-1", 0.0), ("warm", None), ("  ", None)),
+)
+def test_runtime_config_bounds_temperature(monkeypatch, raw, expected):
+    monkeypatch.setenv("MCP_TEMPERATURE", raw)
+
+    assert server.AgentRuntimeConfig.from_env().temperature == expected
+
+
+@pytest.mark.parametrize(("raw", "expected"), (("5", 30), ("99999", 3600), ("x", 600)))
+def test_runtime_config_bounds_run_timeout(monkeypatch, raw, expected):
+    monkeypatch.setenv("MCP_RUN_TIMEOUT_SECONDS", raw)
+
+    assert server.AgentRuntimeConfig.from_env().timeout_seconds == expected
+
+
+class HangingAgent(DummyAgent):
+    async def run(self, *, max_steps):
+        await asyncio.sleep(3600)
+
+
+@pytest.mark.asyncio
+async def test_timed_out_run_is_reported_and_releases_the_browser(monkeypatch):
+    browser = DummyBrowserSession()
+    runtime = dataclasses.replace(
+        server.AgentRuntimeConfig.from_env(), timeout_seconds=0.01
+    )
+    monkeypatch.setattr(server.AgentRuntimeConfig, "from_env", lambda: runtime)
+    monkeypatch.setattr(server, "Agent", HangingAgent)
+    monkeypatch.setattr(server, "create_browser_session", lambda: browser)
+    monkeypatch.setattr(server, "get_llm_model", lambda *args, **kwargs: object())
+
+    with pytest.raises(RuntimeError, match="timed out after"):
+        await server.execute_browser_agent("Open example.com")
+
+    assert browser.stopped is True
+
+
+@pytest.mark.asyncio
+async def test_concurrent_runs_are_limited_to_the_configured_slots(monkeypatch):
+    active = 0
+    peak = 0
+
+    class SlowAgent(DummyAgent):
+        async def run(self, *, max_steps):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return DummyHistory()
+
+    monkeypatch.setattr(server, "_run_slots", asyncio.Semaphore(2))
+    monkeypatch.setattr(server, "Agent", SlowAgent)
+    monkeypatch.setattr(server, "create_browser_session", DummyBrowserSession)
+    monkeypatch.setattr(server, "get_llm_model", lambda *args, **kwargs: object())
+
+    results = await asyncio.gather(
+        *(server.execute_browser_agent(f"Task {index}") for index in range(5))
+    )
+
+    assert results == ["completed"] * 5
+    assert peak == 2
+
+
+class InnerTimeoutAgent(DummyAgent):
+    async def run(self, *, max_steps):
+        raise TimeoutError("provider request timed out")
+
+
+@pytest.mark.asyncio
+async def test_inner_timeout_is_not_reported_as_the_run_deadline(monkeypatch):
+    browser = DummyBrowserSession()
+    monkeypatch.setattr(server, "Agent", InnerTimeoutAgent)
+    monkeypatch.setattr(server, "create_browser_session", lambda: browser)
+    monkeypatch.setattr(server, "get_llm_model", lambda *args, **kwargs: object())
+
+    with pytest.raises(RuntimeError, match="inspect server logs"):
+        await server.execute_browser_agent("Open example.com")
+
+    assert browser.stopped is True

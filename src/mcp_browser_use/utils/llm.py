@@ -19,7 +19,7 @@ def get_llm_model(
     provider: str,
     *,
     model_name: str,
-    temperature: float = 0.3,
+    temperature: float | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
 ) -> Any:

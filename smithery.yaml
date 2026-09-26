@@ -70,12 +70,13 @@ startCommand:
         description: Model provider used by browser-use.
       mcpModelName:
         type: string
-        default: claude-sonnet-4-6
+        default: claude-opus-5
         description: Provider-specific model name.
       mcpTemperature:
         type: number
-        default: 0.3
-        description: Model temperature passed to providers that support it.
+        minimum: 0
+        maximum: 2
+        description: Optional sampling temperature. Leave unset for current Anthropic models, which reject sampling parameters.
       mcpMaxSteps:
         type: integer
         minimum: 1
@@ -92,6 +93,18 @@ startCommand:
         maximum: 20
         default: 5
         description: Maximum browser actions in one model step.
+      mcpRunTimeoutSeconds:
+        type: integer
+        minimum: 30
+        maximum: 3600
+        default: 600
+        description: Wall-clock limit for one browser-agent run.
+      mcpMaxConcurrentRuns:
+        type: integer
+        minimum: 1
+        maximum: 8
+        default: 1
+        description: Browser-agent runs (each with its own Chromium) allowed at once.
   commandFunction:
     |-
     (config) => {
@@ -103,15 +116,17 @@ startCommand:
       const endpointNames = { anthropic: 'ANTHROPIC_API_ENDPOINT', azure_openai: 'AZURE_OPENAI_ENDPOINT', deepseek: 'DEEPSEEK_ENDPOINT', ollama: 'OLLAMA_HOST', openai: 'OPENAI_ENDPOINT' };
       const env = {
         MCP_MODEL_PROVIDER: provider,
-        MCP_MODEL_NAME: config.mcpModelName || 'claude-sonnet-4-6',
-        MCP_TEMPERATURE: String(config.mcpTemperature ?? 0.3),
+        MCP_MODEL_NAME: config.mcpModelName || 'claude-opus-5',
         MCP_MAX_STEPS: String(config.mcpMaxSteps ?? 30),
         MCP_USE_VISION: String(config.mcpUseVision ?? true),
         MCP_MAX_ACTIONS_PER_STEP: String(config.mcpMaxActionsPerStep ?? 5),
+        MCP_RUN_TIMEOUT_SECONDS: String(config.mcpRunTimeoutSeconds ?? 600),
+        MCP_MAX_CONCURRENT_RUNS: String(config.mcpMaxConcurrentRuns ?? 1),
         BROWSER_USE_HEADLESS: String(config.browserUseHeadless ?? true),
         BROWSER_USE_DISABLE_SECURITY: String(config.browserUseDisableSecurity ?? false),
         CHROME_PERSISTENT_SESSION: String(config.chromePersistentSession ?? false),
       };
+      if (config.mcpTemperature !== undefined) env.MCP_TEMPERATURE = String(config.mcpTemperature);
       if (config.modelApiKey && keyNames[provider]) env[keyNames[provider]] = config.modelApiKey;
       if (config.modelEndpoint && endpointNames[provider]) env[endpointNames[provider]] = config.modelEndpoint;
       if (config.azureOpenaiDeployment) env.AZURE_OPENAI_DEPLOYMENT = config.azureOpenaiDeployment;

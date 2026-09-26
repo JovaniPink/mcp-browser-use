@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -34,13 +35,18 @@ def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
     return max(minimum, min(maximum, value))
 
 
-def _env_float(name: str, default: float) -> float:
-    raw_value = os.getenv(name)
+def _env_optional_float(name: str, *, minimum: float, maximum: float) -> float | None:
+    """Return a clamped float, or ``None`` so the provider keeps its default."""
+
+    raw_value = os.getenv(name, "").strip()
+    if not raw_value:
+        return None
     try:
-        return float(raw_value) if raw_value is not None else default
+        value = float(raw_value)
     except ValueError:
-        logger.warning("Invalid float for %s; using %s", name, default)
-        return default
+        logger.warning("Invalid float for %s; using the provider default", name)
+        return None
+    return max(minimum, min(maximum, value))
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,23 +55,36 @@ class AgentRuntimeConfig:
 
     provider: str
     model: str
-    temperature: float
+    temperature: float | None
     max_steps: int
     max_actions_per_step: int
     use_vision: bool
+    timeout_seconds: int
 
     @classmethod
     def from_env(cls) -> AgentRuntimeConfig:
         return cls(
             provider=os.getenv("MCP_MODEL_PROVIDER", "anthropic").strip().lower(),
-            model=os.getenv("MCP_MODEL_NAME", "claude-sonnet-4-6").strip(),
-            temperature=_env_float("MCP_TEMPERATURE", 0.3),
+            model=os.getenv("MCP_MODEL_NAME", "claude-opus-5").strip(),
+            # Unset by default: current Anthropic models reject sampling params.
+            temperature=_env_optional_float(
+                "MCP_TEMPERATURE", minimum=0.0, maximum=2.0
+            ),
             max_steps=_env_int("MCP_MAX_STEPS", 30, minimum=1, maximum=100),
             max_actions_per_step=_env_int(
                 "MCP_MAX_ACTIONS_PER_STEP", 5, minimum=1, maximum=20
             ),
             use_vision=os.getenv("MCP_USE_VISION", "true").lower() in _TRUE_VALUES,
+            timeout_seconds=_env_int(
+                "MCP_RUN_TIMEOUT_SECONDS", 600, minimum=30, maximum=3600
+            ),
         )
+
+
+# Each run owns a Chromium process; bound how many exist at once. Read once at
+# import because the semaphore must be shared by every request in the process.
+_MAX_CONCURRENT_RUNS = _env_int("MCP_MAX_CONCURRENT_RUNS", 1, minimum=1, maximum=8)
+_run_slots = asyncio.Semaphore(_MAX_CONCURRENT_RUNS)
 
 
 def _task_with_context(task: str, add_infos: str) -> str:
@@ -88,7 +107,13 @@ async def execute_browser_agent(task: str, add_infos: str = "") -> str:
 
     task_prompt = _task_with_context(task, add_infos)
     runtime = AgentRuntimeConfig.from_env()
+    async with _run_slots:
+        return await _run_agent(task_prompt, runtime)
+
+
+async def _run_agent(task_prompt: str, runtime: AgentRuntimeConfig) -> str:
     browser_session: BrowserSession | None = None
+    deadline: asyncio.Timeout | None = None
 
     try:
         llm = get_llm_model(
@@ -105,8 +130,22 @@ async def execute_browser_agent(task: str, add_infos: str = "") -> str:
             max_actions_per_step=runtime.max_actions_per_step,
             source="mcp-browser-use",
         )
-        history = await agent.run(max_steps=runtime.max_steps)
+        deadline = asyncio.timeout(runtime.timeout_seconds)
+        async with deadline:
+            history = await agent.run(max_steps=runtime.max_steps)
         return history.final_result() or "Agent stopped without a final result."
+    except TimeoutError as error:
+        # Only the run deadline is reported as a timeout; a TimeoutError raised
+        # inside the agent (e.g. a network call) is an ordinary failure.
+        if deadline is None or not deadline.expired():
+            logger.exception("Browser agent run failed")
+            raise RuntimeError(
+                "Browser agent run failed; inspect server logs."
+            ) from error
+        logger.warning("Browser agent run exceeded %ss", runtime.timeout_seconds)
+        raise RuntimeError(
+            f"Browser agent run timed out after {runtime.timeout_seconds} seconds."
+        ) from error
     except Exception as error:
         logger.exception("Browser agent run failed")
         raise RuntimeError("Browser agent run failed; inspect server logs.") from error
