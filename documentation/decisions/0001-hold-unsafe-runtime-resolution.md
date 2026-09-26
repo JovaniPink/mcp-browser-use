@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-08-21
+- **Last verified:** 2026-09-26
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -71,3 +71,23 @@ compatibility and the runtime audit pass without overrides or suppressions.
 This does not reverse the release hold: complete matrix, container and hosted
 checks on the committed candidate remain necessary, as does separate merge
 authorization. This note supplements the historical evidence above.
+
+## 2026-09-26 status update
+
+Hosted checks on PR #47 head `0e9545a` (browser-use 0.13.10, FastMCP 4.0.3)
+all passed on 2026-09-06, including the runtime audit. The Click, MCP and pypdf
+blocker is resolved.
+
+Re-running the same exact audit on 2026-09-26 reports two new advisories in
+anyio 4.12.1 (CVE-2026-63374 and CVE-2026-64847, fixed in 4.14.2).
+browser-use 0.13.10 is still the latest release and pins `anyio==4.12.1`
+exactly, so `uv lock --upgrade-package anyio` cannot move it. This is the same
+kind of blocker, now in a different package, and the hold stays active. The
+owner re-confirmed that it should not be lifted with an override or
+suppression.
+
+The work from PR #47 and the digest pinning from PR #48 are now combined on one
+branch. PR #48 is superseded, because its digests were for the previous base
+images. Once a browser-use release permits anyio 4.14.2 or later, lifting the
+hold takes one step: refresh the lock, then re-run the existing gates on that
+exact head. The reversal criteria above are unchanged.

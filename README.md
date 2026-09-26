@@ -135,18 +135,22 @@ mislabeling the functional Python matrix as failed.
 
 ### Dependency release boundary
 
-The public-API migration fixes fresh-install launch failures. The candidate pins
-`browser-use==0.13.10` and `fastmcp==4.0.3` use compatible MCP 2 dependencies,
-without overriding upstream constraints. On 2026-09-05, the local Python 3.14
-suite, real in-process automatic/legacy protocol tests, dependency compatibility
-check and exact runtime audit passed. This is local candidate evidence, not a
-hosted-check, container, provider or release acceptance claim.
+The public-API migration fixes fresh-install launch failures. It pins
+`browser-use==0.13.10` and `fastmcp==4.0.3`, which use compatible MCP 2
+dependencies without overriding upstream constraints. All hosted checks,
+including the runtime audit, passed on 2026-09-06.
 
-[Issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) retains the
-release prerequisites. Require the exact committed head to pass the runtime
-audit, full Python matrix and container gates before merge. Do not suppress
-advisories or force incompatible transitive overrides. The historical hold and
-its original evidence remain in the decision log.
+**Current hold (2026-09-26):** the audit now reports two advisories in anyio
+4.12.1 (fixed in 4.14.2). browser-use 0.13.10 pins that version exactly, so the
+release waits for an upstream browser-use release that permits the fix.
+[Issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) and
+[decision 0001](documentation/decisions/0001-hold-unsafe-runtime-resolution.md)
+hold the exit criteria. Do not suppress advisories or force incompatible
+transitive overrides.
+
+A dependency-free CI job also enforces that external container images use
+digests and GitHub Actions use full commit SHAs. Renovate proposes refreshes of
+those pins and of `uv.lock` for review.
 
 ## Docker
 

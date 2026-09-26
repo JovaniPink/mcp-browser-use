@@ -24,3 +24,11 @@ def test_server_uses_root_public_agent_and_session_exports():
     server_source = (SOURCE_ROOT / "server.py").read_text(encoding="utf-8")
 
     assert "from browser_use import Agent, BrowserSession" in server_source
+
+
+def test_package_version_comes_from_installed_metadata():
+    from importlib.metadata import version
+
+    import mcp_browser_use
+
+    assert mcp_browser_use.__version__ == version("mcp_browser_use")
