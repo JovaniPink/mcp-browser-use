@@ -1,67 +1,75 @@
-# Security Model
+# Security boundary
 
-This server gives an LLM control of a real browser. Treat every task, page, download, screenshot,
-and browser profile as untrusted input. This document describes implemented safeguards and the
-operator responsibilities that remain outside the repository.
+This server gives an LLM control of a real browser. Treat every task and every
+page as untrusted input, and treat a persistent browser profile as a credential.
 
-## Implemented Boundaries
+## Defaults and architecture
 
-- `run_browser_agent` trims and validates tool input before allocating a model or browser session.
-- Tasks and optional context are each limited to 20,000 characters.
-- `MCP_MAX_STEPS` is limited to 1–100 and `MCP_MAX_ACTIONS_PER_STEP` to 1–20; invalid values use
-  documented defaults.
-- Every tool call creates a browser session and attempts graceful cleanup, then forced cleanup when
-  supported.
-- Browser web security stays enabled unless `BROWSER_USE_DISABLE_SECURITY=true` is explicitly set.
-- Proxy configuration is omitted from debug logs.
-- CDP endpoints are redacted from debug logs because URLs may contain usernames, passwords, or
-  access tokens.
-- `BROWSER_USE_ALLOWED_DOMAINS` can restrict navigation to an operator-defined allowlist.
+- Each tool call creates its own `BrowserSession` and attempts graceful then
+  forced cleanup.
+- Task and context input is validated and bounded before provider or browser
+  resources are allocated.
+- Each run has a wall-clock limit (`MCP_RUN_TIMEOUT_SECONDS`) and the number of
+  simultaneous browsers is capped (`MCP_MAX_CONCURRENT_RUNS`), so a stuck page
+  or a burst of calls cannot hold or spawn Chromium processes without bound.
+- Browser security remains enabled unless
+  `BROWSER_USE_DISABLE_SECURITY=true` is explicitly set.
+- Model adapters and agent orchestration use browser-use's public API; this
+  repository does not import private telemetry or message-manager internals.
+- The old host clipboard tools were removed so an agent cannot read or overwrite
+  the user's OS clipboard through this server.
+- The container runs as UID 10001 and uses an ephemeral browser profile unless
+  the operator mounts one intentionally.
 
-These controls reduce accidental resource consumption and credential disclosure. They do not make
-untrusted browser automation safe by themselves.
+## Operator responsibilities
 
-## Operator Responsibilities
+1. Restrict navigation with `BROWSER_USE_ALLOWED_DOMAINS` whenever the task has
+   a known destination set.
+2. Use ephemeral profiles for untrusted tasks. A persisted profile may contain
+   cookies, authentication sessions, saved form data, and browsing history.
+3. Keep provider keys in a secret manager or MCP client secret store. Never log
+   full environment dictionaries. Credential-bearing CDP URLs are redacted from
+   the server's debug output.
+4. Run the server in an isolated container or VM when tasks may download files
+   or visit unknown pages.
+5. Keep CDP endpoints bound to localhost or behind an authenticated tunnel. An
+   exposed CDP endpoint grants full browser control.
+6. Review tasks that can submit forms, purchase items, publish content, or alter
+   external systems. The MCP tool does not add a human-approval workflow.
 
-1. Run untrusted tasks in an isolated container or virtual machine.
-2. Use ephemeral browser profiles unless a task explicitly requires persistence. A persisted
-   profile may contain cookies, account sessions, browsing history, and saved form data.
-3. Keep provider credentials in an MCP client secret store or dedicated secret manager. Never put
-   real credentials in `sample.env.env`, source control, screenshots, issue comments, or logs.
-4. Bind Chrome DevTools Protocol endpoints to localhost or place them behind an authenticated
-   tunnel. An exposed CDP endpoint grants browser control.
-5. Keep browser security enabled. If a test requires disabled web security, isolate that browser
-   from authenticated sessions and other workloads.
-6. Restrict allowed domains for bounded workflows and review any expansion deliberately.
-7. Treat clipboard access and downloads as host-side effects. Use a dedicated runtime when a task
-   may encounter hostile content.
-8. Rotate any credential that appears in a task, URL, browser profile, log, or artifact.
+## Network and browser controls
 
-## Concurrency Boundary
+Do not enable `BROWSER_USE_DISABLE_SECURITY` for ordinary browsing. It turns
+off browser protections such as the same-origin policy, so any page the agent
+visits can read data from any other origin in that browser. If a test requires
+it, use a disposable browser with no authenticated profile and a strict domain
+allowlist.
 
-The current `AgentState` is a process-wide singleton. Operate this server as a single active agent
-per process. Multi-tenant or concurrent execution requires replacing that singleton with
-request-scoped state and proving session isolation first.
+Proxying changes where traffic exits but is not a sandbox. Apply network policy
+outside the process when destinations must be enforced independently of agent
+instructions.
 
-## Dependency Boundary
+## Dependency integrity
 
-The Python 3.14/browser-use upgrade is intentionally held by
-[#45](https://github.com/JovaniPink/mcp-browser-use/issues/45). Upstream currently hard-pins
-transitive packages with published advisories. Do not suppress those advisories or force versions
-that fail the package metadata contract. Unit tests, imports, and a successful container build are
-not substitutes for a clean resolved dependency audit.
+Use the committed `uv.lock` with `--frozen` for installs, tests, and runtime
+commands. A compatible environment (`uv pip check`) and a clean vulnerability
+audit are separate requirements. The candidate pairs browser-use 0.13.10 with
+FastMCP 4.0.3, which admits patched Click, MCP 2 and pypdf without overrides.
+Its runtime audit passed on 2026-09-06. On 2026-09-26 it reported two new
+advisories in anyio 4.12.1 (CVE-2026-63374, CVE-2026-64847; fixed in 4.14.2),
+which browser-use 0.13.10 pins exactly. The release stays on hold under
+[decision 0001](decisions/0001-hold-unsafe-runtime-resolution.md) and
+[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until
+upstream publishes compatible metadata. A clean audit is a point-in-time result:
+CI re-runs it on every change, and new advisories can turn it red without a code
+change. Do not allowlist findings or override upstream exact transitive pins.
 
-## Release Checklist
+External container images are pinned to manifest-list digests and GitHub
+Actions to full commit SHAs. A dependency-free CI job enforces this, and
+Renovate proposes digest refreshes for review.
 
-- run the complete test suite on every supported Python version
-- verify the installed environment has no dependency conflicts
-- audit the exact resolved production dependency set
-- build and smoke-test the runtime container when Docker files or dependencies change
-- confirm task/context limits and CDP redaction tests remain present
-- keep the README and configuration reference aligned with actual defaults and limits
+## Reporting vulnerabilities
 
-## Reporting
-
-Open a private security report through GitHub when disclosure would expose credentials or a usable
-exploit. For non-sensitive hardening requests, open a normal issue with the affected boundary,
-reproduction steps, and the exact version or commit tested.
+Open a private GitHub security advisory for vulnerabilities that could expose
+credentials, browser sessions, or host resources. Use a normal issue for launch
+or compatibility defects that contain no secrets.

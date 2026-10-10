@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
-
 
 _DEFAULT_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 
 
-def _resolve_level(level_name: Optional[str]) -> int:
+def _resolve_level(level_name: str | None) -> int:
     """Translate a string level name into a numeric logging level."""
 
     if not level_name:
@@ -23,6 +21,8 @@ def _resolve_level(level_name: Optional[str]) -> int:
         if isinstance(resolved, int):
             return resolved
         return logging.INFO
+
+
 def configure_logging() -> None:
     """Configure the root logger once for the application."""
 

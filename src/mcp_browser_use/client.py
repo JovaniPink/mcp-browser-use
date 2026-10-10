@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any
 
 from fastmcp.client import Client
 
@@ -16,9 +17,9 @@ class AgentNotRegisteredError(RuntimeError):
 
 @asynccontextmanager
 async def create_client_session(
-    client: Optional[Client] = None,
+    client: Client | None = None,
     *,
-    client_factory: Optional[Callable[[], Client]] = None,
+    client_factory: Callable[[], Client] | None = None,
     **client_kwargs: Any,
 ) -> AsyncIterator[Client]:
     """Create an asynchronous context manager for interacting with the server.
@@ -49,7 +50,8 @@ async def create_client_session(
 
     if client is not None and client_kwargs:
         raise ValueError(
-            "'client_kwargs' cannot be used when an explicit client instance is provided."
+            "'client_kwargs' cannot be used when an explicit client instance "
+            "is provided."
         )
 
     if client_factory is not None and client_kwargs:

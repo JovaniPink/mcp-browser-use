@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Utility helpers for configuring and creating :class:`BrowserSession` instances.
 
 This module consolidates the thin wrappers that previously lived in
@@ -13,7 +12,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 from browser_use import BrowserSession
 from browser_use.browser.profile import ProxySettings
@@ -28,18 +27,18 @@ class BrowserPersistenceConfig:
     """Configuration for browser persistence and remote debugging settings."""
 
     persistent_session: bool = False
-    user_data_dir: Optional[str] = None
-    debugging_port: Optional[int] = None
-    debugging_host: Optional[str] = None
+    user_data_dir: str | None = None
+    debugging_port: int | None = None
+    debugging_host: str | None = None
 
     @classmethod
-    def from_env(cls) -> "BrowserPersistenceConfig":
+    def from_env(cls) -> BrowserPersistenceConfig:
         persistent_session = (
             os.getenv("CHROME_PERSISTENT_SESSION", "").lower() in _BOOL_TRUE
         )
         user_data_dir = os.getenv("CHROME_USER_DATA") or None
 
-        debugging_port: Optional[int]
+        debugging_port: int | None
         port_value = os.getenv("CHROME_DEBUGGING_PORT")
         if port_value:
             try:
@@ -69,17 +68,17 @@ class BrowserEnvironmentConfig:
 
     headless: bool = False
     disable_security: bool = False
-    executable_path: Optional[str] = None
-    args: Optional[list[str]] = None
-    allowed_domains: Optional[list[str]] = None
-    proxy: Optional[ProxySettings] = None
-    cdp_url: Optional[str] = None
-    user_data_dir: Optional[str] = None
+    executable_path: str | None = None
+    args: list[str] | None = None
+    allowed_domains: list[str] | None = None
+    proxy: ProxySettings | None = None
+    cdp_url: str | None = None
+    user_data_dir: str | None = None
 
-    def to_kwargs(self) -> Dict[str, Any]:
+    def to_kwargs(self) -> dict[str, Any]:
         """Convert to keyword arguments understood by :class:`BrowserSession`."""
 
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "headless": self.headless,
             "disable_security": self.disable_security,
             "executable_path": self.executable_path,
@@ -93,7 +92,7 @@ class BrowserEnvironmentConfig:
         return {key: value for key, value in kwargs.items() if value is not None}
 
     @classmethod
-    def from_env(cls) -> "BrowserEnvironmentConfig":
+    def from_env(cls) -> BrowserEnvironmentConfig:
         persistence = BrowserPersistenceConfig.from_env()
 
         headless = os.getenv("BROWSER_USE_HEADLESS", "false").lower() in _BOOL_TRUE
@@ -117,7 +116,7 @@ class BrowserEnvironmentConfig:
             ]
 
         proxy_url = os.getenv("BROWSER_USE_PROXY_URL")
-        proxy: Optional[ProxySettings] = None
+        proxy: ProxySettings | None = None
         if proxy_url:
             proxy = ProxySettings(
                 server=proxy_url,
@@ -138,7 +137,8 @@ class BrowserEnvironmentConfig:
                 user_data_dir = persistence.user_data_dir
             else:
                 logger.warning(
-                    "CHROME_PERSISTENT_SESSION requested but CHROME_USER_DATA was not provided."
+                    "CHROME_PERSISTENT_SESSION requested but CHROME_USER_DATA "
+                    "was not provided."
                 )
 
         return cls(
@@ -154,7 +154,7 @@ class BrowserEnvironmentConfig:
 
 
 def create_browser_session(
-    overrides: Optional[Dict[str, Any]] = None,
+    overrides: dict[str, Any] | None = None,
 ) -> BrowserSession:
     """Instantiate a :class:`BrowserSession` using environment defaults.
 
