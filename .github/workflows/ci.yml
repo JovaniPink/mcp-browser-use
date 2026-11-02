@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --disable-pip-version-check uv==0.12.3
+      - run: uv sync --frozen --dev --python "${{ matrix.python }}"
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen ruff format --check .
+      - run: uv run --frozen pytest -q
+      - run: uv pip check
+      - run: uv run --frozen python -c "from mcp_browser_use.server import app; assert app.name == 'mcp_browser_use'"
+
+  audit:
+    name: Runtime dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - run: python -m pip install --disable-pip-version-check uv==0.12.3
+      - run: uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file /tmp/requirements.txt
+      - run: uvx --from pip-audit==2.10.1 pip-audit -r /tmp/requirements.txt
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build --target test --tag mcp-browser-use:test .
+      - run: docker run --rm mcp-browser-use:test
+      - run: docker build --tag mcp-browser-use:runtime .
+      - run: docker run --rm --entrypoint python mcp-browser-use:runtime -c "from mcp_browser_use.server import app; assert app.name == 'mcp_browser_use'"
+      - run: docker run --rm --entrypoint chromium mcp-browser-use:runtime --version

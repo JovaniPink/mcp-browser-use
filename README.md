@@ -1,135 +1,194 @@
 # MCP Browser Use Server
 
-[![smithery badge](https://smithery.ai/badge/@JovaniPink/mcp-browser-use)](https://smithery.ai/server/@JovaniPink/mcp-browser-use)
+An MCP server that exposes browser automation through the maintained public API
+of [`browser-use`](https://github.com/browser-use/browser-use). It provides one
+tool, `run_browser_agent`, for running a natural-language browser task in a
+fresh, isolated browser session.
 
-> Model Context Protocol (MCP) server that wires [browser-use](https://github.com/browser-use/browser-use) into Claude Desktop and other MCP compatible clients.
+## Architecture
 
-<a href="https://glama.ai/mcp/servers/tjea5rgnbv"><img width="380" height="200" src="https://glama.ai/mcp/servers/tjea5rgnbv/badge" alt="Browser Use Server MCP server" /></a>
-
-## Overview
-
-This repository provides a beta MCP wrapper around the `browser-use` automation engine. It exposes a single MCP tool (`run_browser_agent`) that orchestrates a browser session, executes the `browser-use` agent, and returns the final result to the client. The layout keeps configuration in one place, makes security boundaries testable, and isolates upstream `browser-use` migrations from the MCP interface.
-
-### Key Capabilities
-
-- **Automated browsing** – Navigate, interact with forms, control tabs, capture screenshots, and read page content through natural-language instructions executed by `browser-use`.
-- **Agent lifecycle management** – `CustomAgent` wraps `browser-use`'s base agent to add history export, richer prompts, and consistent error handling across runs.
-- **Centralised browser configuration** – `create_browser_session` translates environment variables into a ready-to-use `BrowserSession`, enabling persistent profiles, proxies, and custom Chromium flags without touching the agent logic.
-- **FastMCP integration** – `server.py` registers the MCP tool, normalises configuration, and ensures the browser session is always cleaned up.
-- **Client helpers** – `client.py` includes async helpers for tests or other Python processes that wish to exercise the MCP server in-process.
-
-### Project Structure
-
-```
-.
-├── documentation/
-│   ├── CONFIGURATION.md      # Detailed configuration reference
-│   └── SECURITY.md           # Security considerations for running the server
-├── sample.env.env           # Example environment variables for local development
-├── src/mcp_browser_use/
-│   ├── agent/                # Custom agent, prompts, message history, and views
-│   ├── browser/              # Browser session factory and persistence helpers
-│   ├── controller/           # Custom controller extensions for clipboard actions
-│   ├── utils/                # LLM factory, agent state helpers, encoding utilities
-│   ├── client.py             # Async helper for connecting to the FastMCP app
-│   └── server.py             # FastMCP app and the `run_browser_agent` tool
-└── tests/                    # Unit tests covering server helpers and agent features
+```text
+MCP client
+  -> FastMCP stdio server
+  -> validated per-run configuration
+  -> browser-use Agent + native provider adapter
+  -> isolated BrowserSession
+  -> Chromium or an explicit CDP endpoint
 ```
 
-## Getting Started
+The server deliberately does not subclass browser-use's private agent,
+telemetry, prompt, or message-manager internals. Provider adapters come directly
+from browser-use, which keeps the MCP boundary stable when upstream internals
+change. Each request owns its browser session and always attempts cleanup.
 
-### Requirements
+## Requirements
 
-- Python 3.11+
-- Google Chrome or Chromium (for local automation)
-- [`uv`](https://github.com/astral-sh/uv) for dependency management (recommended)
-- Optional: Claude Desktop or another MCP-compatible client for integration testing
+- Python 3.11 through 3.14
+- [`uv`](https://docs.astral.sh/uv/) 0.12.3 or newer
+- Chrome/Chromium, unless connecting through `BROWSER_USE_CDP_URL`
+- an API key for the selected hosted model provider (Ollama is keyless)
 
-### Installation
+The production container includes Chromium and runs the MCP process as UID
+10001. It defaults to headless browsing.
 
-```bash
+## Install and run
+
+```sh
 git clone https://github.com/JovaniPink/mcp-browser-use.git
 cd mcp-browser-use
-uv sync
+cp .env.example .env
+uv sync --frozen
+uv run --frozen --env-file .env mcp-browser-use
 ```
 
-Copy `sample.env.env` to `.env` (or export the variables another way) and update only the providers you plan to use. Never commit the populated `.env` file.
+The console command starts FastMCP over stdio. Configure it as a child process
+of your MCP client; do not start it separately and then point the client at a
+TCP port.
 
-### Launching the server
+The server does not load `.env` itself. The command above loads it explicitly;
+the client configuration below instead injects environment values directly.
 
-```bash
-uv run mcp-browser-use
-```
+The included `smithery.yaml` uses the same frozen command and provider contract.
+It requires one provider-neutral API key for every hosted provider and maps that
+key to only the selected provider. Ollama is the sole keyless option. The schema
+uses Smithery's documented [JSON Schema configuration
+contract](https://smithery.ai/docs/build/session-config) and JSON Schema
+[`if`/`then` conditional
+validation](https://json-schema.org/understanding-json-schema/reference/conditionals)
+to require the key. The command function repeats the check before returning a
+process command, so a keyless hosted-provider session fails closed even if a
+client does not surface the conditional field guidance. Smithery does not assume
+a CDP port; provide an explicit authenticated CDP URL only when attaching to an
+existing browser is intentional.
 
-The command invokes the console script defined in `pyproject.toml`, starts the FastMCP application, and registers the `run_browser_agent` tool.
-
-#### Using with Claude Desktop
-
-Once the server is running you can register it inside Claude Desktop, for example:
+Example client configuration:
 
 ```json
-"mcpServers": {
-  "mcp_server_browser_use": {
-    "command": "uvx",
-    "args": ["mcp-browser-use"],
-    "env": {
-      "MCP_MODEL_PROVIDER": "anthropic",
-      "MCP_MODEL_NAME": "claude-3-5-sonnet-20241022"
+{
+  "mcpServers": {
+    "browser-use": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/mcp-browser-use",
+        "run",
+        "--frozen",
+        "mcp-browser-use"
+      ],
+      "env": {
+        "MCP_MODEL_PROVIDER": "anthropic",
+        "MCP_MODEL_NAME": "claude-sonnet-4-6",
+        "ANTHROPIC_API_KEY": "replace-in-your-client-secret-store"
+      }
     }
   }
 }
 ```
 
-### Debugging
-
-For interactive debugging, use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector):
-
-```bash
-npx @modelcontextprotocol/inspector uv --directory /path/to/project run mcp-browser-use
-```
-
-The inspector prints a URL that can be opened in the browser to watch tool calls and responses in real time.
+Use an absolute repository path. Keep credentials in the MCP client's secret
+store rather than committing them to its JSON configuration.
 
 ## Configuration
 
-A full list of environment variables and their defaults is available in [documentation/CONFIGURATION.md](documentation/CONFIGURATION.md). Highlights include:
+Copy [`.env.example`](./.env.example) for the supported variables and read the
+[configuration guide](./documentation/CONFIGURATION.md) for provider, browser,
+proxy, persistence, and limit behavior.
 
-- `MCP_MODEL_PROVIDER`, `MCP_MODEL_NAME`, `MCP_TEMPERATURE`, `MCP_MAX_STEPS`, `MCP_MAX_ACTIONS_PER_STEP`, and `MCP_USE_VISION` control the LLM and agent run.
-- Provider-specific API keys and endpoints (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_API_KEY`, `AZURE_OPENAI_API_KEY`, etc.).
-- Browser runtime flags (`BROWSER_USE_HEADLESS`, `BROWSER_USE_EXTRA_CHROMIUM_ARGS`, `CHROME_PERSISTENT_SESSION`, `BROWSER_USE_PROXY_URL`, ...).
+Supported provider values are:
 
-Use `.env` + [`python-dotenv`](https://pypi.org/project/python-dotenv/) or your preferred secrets manager to keep credentials out of source control.
+- `anthropic`
+- `azure_openai`
+- `browser_use`
+- `deepseek`
+- `gemini`
+- `ollama`
+- `openai`
 
-## Running Tests
+The server validates tool input before allocating a model or browser session. It
+rejects an empty task, limits both the task and optional context to 20,000
+characters each, bounds `MCP_MAX_STEPS` to 1–100, and bounds
+`MCP_MAX_ACTIONS_PER_STEP` to 1–20.
 
-```bash
-uv run python -m pytest -q
+## Development and validation
+
+```sh
+python3.14 -m pip install uv==0.12.3
+uv sync --frozen --dev
+uv run --frozen ruff check .
+uv run --frozen ruff format --check .
+uv run --frozen pytest -q
+uv pip check
+uv export --frozen --no-dev --no-emit-project \
+  --format requirements-txt --output-file /tmp/mcp-browser-use-requirements.txt
+uvx --from pip-audit==2.10.1 pip-audit \
+  -r /tmp/mcp-browser-use-requirements.txt
 ```
 
-The tests cover custom-agent behavior, browser configuration, MCP input limits, secret redaction,
-and utility helpers. A dependency update is not merge-ready merely because imports or unit tests
-pass; the resolved environment must also pass its dependency and security checks.
+CI runs the functional gates on Python 3.11, 3.12, 3.13, and 3.14, then builds
+both Docker targets and verifies the runtime image can import the server and
+execute Chromium. A separate required job exports the exact runtime graph and
+runs `pip-audit`, so an upstream security hold remains visible without
+mislabeling the functional Python matrix as failed.
 
-## Security
+### Dependency release boundary
 
-Controlling a full browser instance remotely can grant broad access to the host machine. Review [documentation/SECURITY.md](documentation/SECURITY.md) before exposing the server to untrusted environments.
+The public-API migration fixes fresh-install launch failures. The candidate pins
+`browser-use==0.13.10` and `fastmcp==4.0.3` use compatible MCP 2 dependencies,
+without overriding upstream constraints. On 2026-09-05, the local Python 3.14
+suite, real in-process automatic/legacy protocol tests, dependency compatibility
+check and exact runtime audit passed. This is local candidate evidence, not a
+hosted-check, container, provider or release acceptance claim.
+
+[Issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) retains the
+release prerequisites. Require the exact committed head to pass the runtime
+audit, full Python matrix and container gates before merge. Do not suppress
+advisories or force incompatible transitive overrides. The historical hold and
+its original evidence remain in the decision log.
+
+## Docker
+
+```sh
+docker build --target test -t mcp-browser-use:test .
+docker run --rm mcp-browser-use:test
+docker build -t mcp-browser-use:local .
+docker run --rm -i --env-file .env mcp-browser-use:local
+```
+
+The Docker context excludes local virtual environments, Git metadata, `.env`
+files and build caches; pass provider secrets only at runtime.
+
+The MCP protocol uses stdin/stdout, so keep `-i`. Browser sessions are ephemeral
+unless you explicitly mount a profile and enable persistence.
+
+## Security boundary
+
+Browser automation can read pages, enter data, download files, and act with the
+permissions of a persisted browser profile. Use allowed-domain restrictions,
+ephemeral profiles, least-privilege credentials, and an isolated container or
+VM for untrusted tasks. The OS clipboard actions from the older implementation
+were removed. See [SECURITY.md](./documentation/SECURITY.md).
+
 The complete documentation map and active dependency decision record are in
-[documentation/README.md](documentation/README.md).
+[documentation/README.md](documentation/README.md). The Python 3.14/browser-use
+dependency migration remains unreleased until all exact-head release gates pass;
+do not suppress the audit or force incompatible transitive versions.
 
-The MCP tool trims and bounds task/context input before allocating a model or browser session.
-Runtime step limits are constrained, proxy settings are omitted from debug logs, and CDP endpoint
-values are redacted because they may contain credentials.
+## Troubleshooting
 
-The Python 3.14/browser-use dependency migration remains held in
-[#45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until upstream permits patched
-transitive versions. Do not force incompatible overrides or suppress the audit findings.
+- `ImportError` mentioning browser-use telemetry or agent internals means an old
+  checkout or environment is still installed. Run `uv sync --frozen --refresh`
+  from a current checkout.
+- If the MCP client cannot launch the command, use absolute paths and confirm
+  `uv run --frozen mcp-browser-use` starts without an import traceback.
+- If Chromium cannot start, set `CHROME_PATH` or use the provided container.
+- If connecting to an existing browser, set only `BROWSER_USE_CDP_URL`; do not
+  expose a debugging port publicly.
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch: `git checkout -b my-new-feature`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin my-new-feature`
-5. Open a pull request
+Keep changes on public browser-use and FastMCP APIs. Update `uv.lock`, tests,
+the relevant documentation, and the Docker/import smoke gates in the same PR.
 
-Bug reports and feature suggestions are welcome—please include logs and reproduction steps when applicable.
+## License
+
+MIT. See [LICENSE](./LICENSE).
