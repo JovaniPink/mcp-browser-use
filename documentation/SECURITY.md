@@ -53,11 +53,17 @@ instructions.
 
 Use the committed `uv.lock` with `--frozen` for installs, tests, and runtime
 commands. A compatible environment (`uv pip check`) and a clean vulnerability
-audit are separate requirements. The candidate pairs browser-use 0.13.10 with
-FastMCP 4.0.3, which admits patched Click, MCP 2 and pypdf without overrides.
-Its runtime audit passed on 2026-09-06. On 2026-09-26 it reported two new
-advisories in anyio 4.12.1 (CVE-2026-63374, CVE-2026-64847; fixed in 4.14.2),
-which browser-use 0.13.10 pins exactly. The release stays on hold under
+audit are separate requirements. The current candidate pairs browser-use
+0.13.14 with FastMCP 4.0.3. Its November 17 targeted refresh removes 64 advisory
+records and 12 affected packages from the older lock, but 76 records remain in
+AnyIO, FastMCP, MCP, Pillow, and pypdf. Browser-use's exact pins prevent the
+patched AnyIO, MCP, Pillow, and pypdf versions; patched FastMCP also needs the
+newer MCP version. Browser-harness independently requires the affected Pillow
+version. The minimum Python version is now 3.11.5 to exclude an additional
+vulnerable SoupSieve fallback on older patch releases. See the
+[source-bound validation record](validation/runtime-repair-2026-11-17.md).
+
+The release stays on hold under
 [decision 0001](decisions/0001-hold-unsafe-runtime-resolution.md) and
 [issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until
 upstream publishes compatible metadata. A clean audit is a point-in-time result:

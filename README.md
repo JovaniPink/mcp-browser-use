@@ -23,7 +23,7 @@ change. Each request owns its browser session and always attempts cleanup.
 
 ## Requirements
 
-- Python 3.11 through 3.14
+- Python 3.11.5 or newer in the supported 3.11 through 3.14 series
 - [`uv`](https://docs.astral.sh/uv/) 0.12.3 or newer
 - Chrome/Chromium, unless connecting through `BROWSER_USE_CDP_URL`
 - an API key for the selected hosted model provider (Ollama is keyless)
@@ -135,14 +135,20 @@ mislabeling the functional Python matrix as failed.
 
 ### Dependency release boundary
 
-The public-API migration fixes fresh-install launch failures. It pins
-`browser-use==0.13.10` and `fastmcp==4.0.3`, which use compatible MCP 2
-dependencies without overriding upstream constraints. All hosted checks,
-including the runtime audit, passed on 2026-09-06.
+The public-API migration fixes fresh-install launch failures. The current
+candidate pins `browser-use==0.13.14` and `fastmcp==4.0.3` without overriding
+upstream constraints. Python 3.11.5 is the minimum because earlier 3.11 patches
+force the resolver to retain a vulnerable SoupSieve fallback.
 
-**Current hold (2026-09-26):** the audit now reports two advisories in anyio
-4.12.1 (fixed in 4.14.2). browser-use 0.13.10 pins that version exactly, so the
-release waits for an upstream browser-use release that permits the fix.
+**Current hold (2026-11-17):** the targeted dependency refresh reduced the
+unsuppressed runtime audit from 140 advisory records in 17 packages to 76
+records in five: AnyIO, FastMCP, MCP, Pillow, and pypdf. These are audit records,
+not a count of independently exploitable application defects. Upstream exact
+pins prevent a clean compatible resolution; newer FastMCP requires an MCP
+version that browser-use excludes. Browser-harness independently pins the
+affected Pillow version. See the
+[repair and validation record](documentation/validation/runtime-repair-2026-11-17.md).
+
 [Issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) and
 [decision 0001](documentation/decisions/0001-hold-unsafe-runtime-resolution.md)
 hold the exit criteria. Do not suppress advisories or force incompatible

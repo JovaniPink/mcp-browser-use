@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-09-26
+- **Last verified:** 2026-11-17
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -91,3 +91,33 @@ branch. PR #48 is superseded, because its digests were for the previous base
 images. Once a browser-use release permits anyio 4.14.2 or later, lifting the
 hold takes one step: refresh the lock, then re-run the existing gates on that
 exact head. The reversal criteria above are unchanged.
+
+## 2026-11-17 compatible repair and refreshed evidence
+
+The earlier two-advisory status is historical. A fresh unsuppressed audit of
+the selected PR #51 lock reports 140 advisory records across 17 packages.
+The compatible browser-use 0.13.14 update and targeted lock refresh reduce
+that to 76 records across five packages. Unrelated locked versions are
+preserved. Python >=3.11.5 excludes an unsafe SoupSieve fallback selected by
+earlier Python 3.11 patches.
+
+The repository-owned Ollama temperature mapping and reusable-workflow pin
+detection defects are repaired with regressions that failed before the fixes.
+These repairs do not reverse the dependency hold.
+
+The current upstream constraints still require AnyIO 4.12.1, MCP 2.1.1,
+Pillow 12.3.0, and pypdf 6.16.2. A normal resolver rejects patched FastMCP 4.1.2
+because it requires MCP >=2.2.0. Browser-use 1.0.6 both changes the runtime
+contract materially and still pins the affected Pillow version, so it is not
+adopted as a security shortcut.
+
+A metadata-only feasibility probe also showed that changing the four
+browser-use pins alone is insufficient: its browser-harness 0.1.13 dependency
+independently pins Pillow 12.3.0. A maintained compatibility fork would need
+to address both packages and test their behavioral differences. No such fork
+has been adopted or authorized by this update.
+
+The [validation record](../validation/runtime-repair-2026-11-17.md) identifies
+the exact manifest and lock, remaining packages, commands, and evidence
+limits. The existing reversal criteria and separate merge authorization
+remain in force; no advisory suppression or resolver override was introduced.

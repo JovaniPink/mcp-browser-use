@@ -64,6 +64,9 @@ def get_llm_model(
         return ChatOllama(
             model=model_name,
             host=base_url or os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+            ollama_options=(
+                {"temperature": temperature} if temperature is not None else None
+            ),
         )
     if provider == "azure_openai":
         return ChatAzureOpenAI(

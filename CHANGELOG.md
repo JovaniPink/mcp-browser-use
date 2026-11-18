@@ -12,7 +12,7 @@ until the exact runtime dependency audit passes without overrides.
 
 ### Changed
 
-- Moved to browser-use 0.13.10's public `Agent`, `BrowserSession` and chat-model
+- Moved to browser-use 0.13.14's public `Agent`, `BrowserSession` and chat-model
   adapters, and to FastMCP 4. Removed the custom agent, controller and
   message-manager layer that imported private browser-use modules and made
   the server crash on launch (#8, #20).
@@ -22,6 +22,17 @@ until the exact runtime dependency audit passes without overrides.
   unset by default, because current Anthropic models reject sampling
   parameters.
 - The container runs Python 3.14 and Chromium as the unprivileged user 10001.
+- Refreshed affected dependencies within published metadata, preserving
+  unrelated locked versions. Python 3.11.5 is now the minimum so older 3.11
+  patches cannot select the vulnerable SoupSieve fallback.
+
+### Fixed
+
+- Explicit Ollama temperatures, including zero, now reach the provider through
+  the supported `ollama_options` interface. Unset values keep provider defaults.
+- The immutable-input check now inspects job-level reusable workflows and
+  named steps as well as steps beginning with `uses:`. Local references remain
+  allowed; external references must use full commit SHAs.
 
 ### Added
 
@@ -40,3 +51,7 @@ until the exact runtime dependency audit passes without overrides.
   debug logs.
 - The Smithery launcher maps only the selected provider's credential, and
   connects to CDP only when explicitly configured.
+- The November 17 runtime audit fell from 140 advisory records across 17
+  packages to 76 across five. The remaining upstream constraints and failed
+  mandatory audit keep the release hold active; see the
+  [validation record](documentation/validation/runtime-repair-2026-11-17.md).

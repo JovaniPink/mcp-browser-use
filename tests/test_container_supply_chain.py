@@ -4,13 +4,17 @@ import json
 import re
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from textwrap import dedent
+from unittest.mock import patch
 
 ROOT = Path(__file__).parents[1]
 DOCKERFILE = ROOT / "Dockerfile"
 RENOVATE_CONFIG = ROOT / "renovate.json"
 WORKFLOWS = ROOT / ".github" / "workflows"
 DIGEST_PATTERN = re.compile(r"^@sha256:[0-9a-f]{64}$")
-ACTION_PATTERN = re.compile(r"^\s*-\s+uses:\s*(?P<reference>[^\s#]+)")
+# Block-style workflows put uses at job level, after a step name, or first in a step.
+ACTION_PATTERN = re.compile(r"^\s*(?:-\s+)?uses:\s*(?P<reference>[^\s#]+)")
 COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -82,6 +86,59 @@ class ContainerSupplyChainContractTests(unittest.TestCase):
                 COMMIT_PATTERN,
                 f"GitHub Action is not pinned to a full commit SHA: {reference}",
             )
+
+    def test_mutable_reusable_workflow_is_rejected(self) -> None:
+        workflow = dedent(
+            f"""\
+            jobs:
+              reusable:
+                uses: example/security/.github/workflows/check.yml@main
+              local:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@{"a" * 40}
+            """
+        )
+        with TemporaryDirectory() as directory:
+            workflows = Path(directory)
+            (workflows / "ci.yml").write_text(workflow, encoding="utf-8")
+            with (
+                patch(f"{__name__}.WORKFLOWS", workflows),
+                self.assertRaisesRegex(
+                    AssertionError, "not pinned to a full commit SHA"
+                ),
+            ):
+                self.test_every_external_action_uses_a_full_commit_sha()
+
+    def test_pinned_steps_and_workflows_allow_local_references(self) -> None:
+        reusable = f"example/security/.github/workflows/check.yml@{'a' * 40}"
+        named_step = f"actions/checkout@{'b' * 40}"
+        unnamed_step = f"actions/setup-python@{'c' * 40}"
+        workflow = dedent(
+            f"""\
+            jobs:
+              reusable:
+                uses: {reusable}
+              local_workflow:
+                uses: ./.github/workflows/local.yml
+              checks:
+                runs-on: ubuntu-latest
+                steps:
+                  - name: Check out source
+                    uses: {named_step}
+                  - uses: {unnamed_step}
+                  - uses: ./.github/actions/local
+            """
+        )
+        with TemporaryDirectory() as directory:
+            workflows = Path(directory)
+            (workflows / "ci.yaml").write_text(workflow, encoding="utf-8")
+            with patch(f"{__name__}.WORKFLOWS", workflows):
+                self.assertEqual(
+                    _external_action_references(),
+                    [reusable, named_step, unnamed_step],
+                )
+                self.test_every_external_action_uses_a_full_commit_sha()
 
     def test_renovate_refreshes_container_and_action_digests(self) -> None:
         config = json.loads(RENOVATE_CONFIG.read_text(encoding="utf-8"))

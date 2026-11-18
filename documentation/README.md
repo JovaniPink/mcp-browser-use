@@ -22,6 +22,10 @@ replacement.
 
 ## Evidence rules
 
+The [November 17 runtime repair record](validation/runtime-repair-2026-11-17.md)
+contains the latest bounded repair, supported-runtime tests, audit receipt, and
+remaining upstream dependency constraints.
+
 - Distinguish unit tests, dependency resolution, vulnerability audit, container
   build, MCP-client integration, and isolated-browser operation.
 - Never publish provider keys, authenticated CDP endpoints, profile contents,
