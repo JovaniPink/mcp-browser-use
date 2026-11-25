@@ -5,13 +5,17 @@ page as untrusted input, and treat a persistent browser profile as a credential.
 
 ## Defaults and architecture
 
-- Each tool call creates its own `BrowserSession` and attempts graceful then
-  forced cleanup.
+- Each tool call creates its own `BrowserSession`. Cleanup is shielded from
+  AnyIO request cancellation; graceful stop has a 10-second deadline, with a
+  5-second forced-stop fallback on failure or timeout. Native task cancellation
+  is re-raised after the fallback rather than converted into success.
 - Task and context input is validated and bounded before provider or browser
   resources are allocated.
-- Each run has a wall-clock limit (`MCP_RUN_TIMEOUT_SECONDS`) and the number of
-  simultaneous browsers is capped (`MCP_MAX_CONCURRENT_RUNS`), so a stuck page
-  or a burst of calls cannot hold or spawn Chromium processes without bound.
+- The active agent phase has a wall-clock limit (`MCP_RUN_TIMEOUT_SECONDS`).
+  `MCP_MAX_CONCURRENT_RUNS` caps active requests, and a request retains its slot
+  through its cleanup attempts. Shutdown failure is logged; these deadlines
+  cannot guarantee process exit if both attempts fail or the server is killed
+  externally. Operators still need process/container supervision.
 - Browser security remains enabled unless
   `BROWSER_USE_DISABLE_SECURITY=true` is explicitly set.
 - Model adapters and agent orchestration use browser-use's public API; this
@@ -51,26 +55,46 @@ instructions.
 
 ## Dependency integrity
 
-Use the committed `uv.lock` with `--frozen` for installs, tests, and runtime
-commands. A compatible environment (`uv pip check`) and a clean vulnerability
-audit are separate requirements. The current candidate pairs browser-use
-0.13.14 with FastMCP 4.0.3. Its November 25 unsuppressed audit reports 77
-records across AnyIO, FastMCP, MCP, Pillow, and pypdf. Browser-use's exact pins
-prevent the patched AnyIO, MCP, Pillow, and pypdf versions; patched FastMCP
-also needs the newer MCP version. Browser-harness 0.1.15 now supports Pillow
-13, but browser-use still selects harness 0.1.13 and Pillow 12.3.0 exactly.
-The minimum Python version is 3.11.5 to exclude an additional vulnerable
-SoupSieve fallback on older patch releases. See the
-[current validation record](validation/runtime-follow-up-2026-11-25.md) for
-the audit's scope, advisory applicability, and executed upgrade probes.
+Use the complete repository checkout and committed `uv.lock` with `--frozen`
+for installation and runtime commands, or build the Docker image from that
+checkout. The candidate selects an owned browser-use 0.13.14 wheel with build
+tag `1mcbu1`; its packaging metadata permits the selected AnyIO 4.14.2,
+FastMCP 4.2.6, MCP 2.3.0, browser-harness 0.1.15, Pillow 13.0.0, and pypdf
+6.21.4 graph. Python 3.11.5 remains the minimum to exclude the older vulnerable
+SoupSieve fallback.
 
-The release stays on hold under
-[decision 0001](decisions/0001-hold-unsafe-runtime-resolution.md) and
-[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until a
-patched, compatible graph satisfies the recorded reversal criteria. A clean
-audit is a point-in-time result: CI re-runs it on every change, and new
-advisories can turn it red without a code change. Do not allowlist findings or
-override upstream exact transitive pins.
+The [provenance record](../compat/browser-use/provenance.json), source patch,
+upstream archive and artifact hashes, MIT license, and
+[verification/rebuild procedure](../compat/browser-use/README.md) accompany
+the owned artifact. Its 182 browser-use runtime files are byte-identical to
+the verified upstream source archive. Retaining the upstream distribution
+name/version keeps it visible to advisory matching; the build tag and explicit
+metadata identify the changed packaging. Verify the artifact before installing
+it. Never silently substitute the published wheel, remove source verification,
+or bypass the resolver's dependency checks.
+
+`tool.uv.sources` is a repository installation contract and does not travel
+inside the application wheel as normal dependency metadata. Ordinary
+application-wheel installation against the published browser-use package does
+not resolve this graph. Standalone wheel distribution, registry publication,
+and deployment are outside this decision's supported scope.
+
+Dependency compatibility, the unsuppressed audit, and runtime behavior are
+separate gates. The [owned-build validation receipt](validation/owned-runtime-compatibility-2026-11-25.md)
+records actual local results and the hosted checks still required. The
+[earlier upstream-only audit](validation/runtime-follow-up-2026-11-25.md)
+preserves the 77-record failure; it is not a result for the owned graph.
+
+[Decision 0002](decisions/0002-owned-repository-compatibility-build.md) is
+accepted for this bounded scope, effective only when PR #51 is merged after
+the final published head passes the audit, supported Python matrix,
+reproducible source build, MCP and real-browser boundaries, and non-root
+container checks.
+Until then, the release hold in
+[decision 0001](decisions/0001-hold-unsafe-runtime-resolution.md) remains in
+effect. A clean advisory scan is a point-in-time result, not proof of an
+absence of defects; new advisories or failed compatibility checks reinstate
+the hold. Do not allowlist findings, skip the owned package, or weaken gates.
 
 External container images are pinned to manifest-list digests and GitHub
 Actions to full commit SHAs. A dependency-free CI job enforces this, and

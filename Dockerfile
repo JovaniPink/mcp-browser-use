@@ -10,6 +10,11 @@ RUN apt-get update \
 # Install the project into /app
 WORKDIR /app
 
+# The owned compatibility candidate is an explicit, hash-verified local wheel.
+# It must be present before the frozen dependency layer resolves uv.lock.
+COPY compat/browser-use /app/compat/browser-use
+RUN python compat/browser-use/verify.py
+
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
 

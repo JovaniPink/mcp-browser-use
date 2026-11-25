@@ -16,8 +16,9 @@ classifiers = [
 ]
 
 dependencies = [
+    "anyio==4.14.2",
     "browser-use==0.13.14",
-    "fastmcp==4.0.3",
+    "fastmcp==4.2.6",
     "python-dotenv==1.2.2",
 ]
 
@@ -46,3 +47,6 @@ packages = ["src/mcp_browser_use"]
 
 [project.scripts]
 mcp-browser-use = "mcp_browser_use.server:launch_mcp_browser_use_server"
+
+[tool.uv.sources]
+browser-use = { path = "compat/browser-use/browser_use-0.13.14-1mcbu1-py3-none-any.whl" }

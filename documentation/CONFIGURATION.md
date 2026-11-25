@@ -16,12 +16,18 @@ MCP client, shell, container runtime, or another secret-injection mechanism.
 | `MCP_MAX_STEPS` | `30` | Integer clamped to 1–100. |
 | `MCP_MAX_ACTIONS_PER_STEP` | `5` | Integer clamped to 1–20. |
 | `MCP_USE_VISION` | `true` | `1`, `true`, `yes`, or `on` enables screenshots. |
-| `MCP_RUN_TIMEOUT_SECONDS` | `600` | Integer clamped to 30–3600. Wall-clock limit for one run; the browser is released when it expires. |
+| `MCP_RUN_TIMEOUT_SECONDS` | `600` | Integer clamped to 30–3600. Wall-clock limit for agent execution; expiration starts bounded browser cleanup. |
 | `MCP_MAX_CONCURRENT_RUNS` | `1` | Integer clamped to 1–8, read at startup. Each run owns a Chromium process; extra requests wait. |
 
 Invalid numeric values fall back to their documented defaults (or, for
 `MCP_TEMPERATURE`, to the provider default) and emit a warning without logging
 secrets.
+
+Cleanup retains the run's concurrency slot while it attempts graceful shutdown
+for up to 10 seconds, then a forced shutdown fallback for up to 5 seconds.
+These attempts can extend the request beyond its agent-execution timeout.
+Cancellation is preserved and shutdown failures are logged; if both attempts
+fail, a browser process can remain. See the [security guidance](SECURITY.md).
 
 ## Tool input contract
 

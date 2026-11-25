@@ -24,7 +24,7 @@ change. Each request owns its browser session and always attempts cleanup.
 ## Requirements
 
 - Python 3.11.5 or newer in the supported 3.11 through 3.14 series
-- [`uv`](https://docs.astral.sh/uv/) 0.12.3 or newer
+- [`uv`](https://docs.astral.sh/uv/) 0.12.3 for the documented frozen build
 - Chrome/Chromium, unless connecting through `BROWSER_USE_CDP_URL`
 - an API key for the selected hosted model provider (Ollama is keyless)
 
@@ -37,9 +37,17 @@ The production container includes Chromium and runs the MCP process as UID
 git clone https://github.com/JovaniPink/mcp-browser-use.git
 cd mcp-browser-use
 cp .env.example .env
+python3 compat/browser-use/verify.py
 uv sync --frozen
 uv run --frozen --env-file .env mcp-browser-use
 ```
+
+Keep the complete checkout, including `compat/browser-use/`. This candidate
+uses a repository-owned browser-use packaging build selected by
+`tool.uv.sources` and `uv.lock`. The supported delivery paths are this frozen
+checkout and its Docker build. Installing the application wheel alone or
+publishing it to a registry does not reproduce that dependency selection and
+is not supported by this compatibility decision.
 
 The console command starts FastMCP over stdio. Configure it as a child process
 of your MCP client; do not start it separately and then point the client at a
@@ -110,12 +118,18 @@ characters each, bounds `MCP_MAX_STEPS` to 1–100, and bounds
 `MCP_MAX_ACTIONS_PER_STEP` to 1–20. Each run is cut off after
 `MCP_RUN_TIMEOUT_SECONDS` (default 600), and at most `MCP_MAX_CONCURRENT_RUNS`
 runs (default 1) hold a browser at once; later requests wait for a free slot.
-The browser session is released on success, failure, and timeout.
+The run slot remains occupied while cleanup attempts finish. Cleanup is
+shielded from request cancellation, with separate graceful-stop and forced-stop
+deadlines, and the original cancellation is preserved. Failed shutdown attempts
+are logged; a process may remain if both attempts fail or the server is killed
+externally. See the [security boundary](documentation/SECURITY.md).
 
 ## Development and validation
 
 ```sh
 python3.14 -m pip install uv==0.12.3
+python3 compat/browser-use/verify.py
+python3 compat/browser-use/build.py --check
 uv sync --frozen --dev
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
@@ -127,32 +141,40 @@ uvx --from pip-audit==2.10.1 pip-audit \
   -r /tmp/mcp-browser-use-requirements.txt
 ```
 
-CI runs the functional gates on Python 3.11, 3.12, 3.13, and 3.14, then builds
-both Docker targets and verifies the runtime image can import the server and
-execute Chromium. A separate required job exports the exact runtime graph and
-runs `pip-audit`, so an upstream security hold remains visible without
-mislabeling the functional Python matrix as failed.
+CI is configured to run the functional gates on Python 3.11, 3.12, 3.13, and
+3.14, reproduce the owned artifact, and build both Docker targets. The runtime
+container must pass browser/document and MCP subprocess probes as UID 10001
+with networking disabled. A separate required job exports the exact runtime
+graph and runs an unsuppressed `pip-audit`, including the owned distribution.
+These gates remain necessary on the final published head; the
+[validation receipt](documentation/validation/owned-runtime-compatibility-2026-11-25.md)
+separates local results from pending hosted checks.
 
 ### Dependency release boundary
 
-The public-API migration fixes fresh-install launch failures. The current
-candidate pins `browser-use==0.13.14` and `fastmcp==4.0.3` without overriding
-upstream constraints. Python 3.11.5 is the minimum because earlier 3.11 patches
-force the resolver to retain a vulnerable SoupSieve fallback.
+The current candidate uses the owned
+`browser_use-0.13.14-1mcbu1-py3-none-any.whl`, FastMCP 4.2.6, AnyIO 4.14.2,
+MCP 2.3.0, browser-harness 0.1.15, Pillow 13.0.0, and pypdf 6.21.4. Its actual
+wheel metadata declares the changed requirements, so the ordinary resolver and
+dependency checks still apply. Python 3.11.5 remains the minimum to exclude the
+older vulnerable SoupSieve fallback.
 
-**Current hold (2026-11-17):** the targeted dependency refresh reduced the
-unsuppressed runtime audit from 140 advisory records in 17 packages to 76
-records in five: AnyIO, FastMCP, MCP, Pillow, and pypdf. These are audit records,
-not a count of independently exploitable application defects. Upstream exact
-pins prevent a clean compatible resolution; newer FastMCP requires an MCP
-version that browser-use excludes. Browser-harness independently pins the
-affected Pillow version. See the
-[repair and validation record](documentation/validation/runtime-repair-2026-11-17.md).
+The owned build changes packaging metadata; its 182 browser-use runtime files
+match the verified upstream source archive. It preserves the upstream MIT
+license and the `browser-use` name/version used by advisory matching. The build
+tag, explicit summary, source patch, archive and artifact hashes, and
+[verification/rebuild procedure](compat/browser-use/README.md) distinguish it
+from the published distribution. No advisory is allowlisted or skipped.
 
-[Issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) and
-[decision 0001](documentation/decisions/0001-hold-unsafe-runtime-resolution.md)
-hold the exit criteria. Do not suppress advisories or force incompatible
-transitive overrides.
+[Decision 0002](documentation/decisions/0002-owned-repository-compatibility-build.md)
+records the accepted bounded checkout/container delivery contract. It takes
+effect only when PR #51 is merged after its mandatory checks pass, including
+compatibility, audit, matrix, source-build, and container gates. Local results
+do not establish completed adoption or qualify a release. The
+[earlier decision](documentation/decisions/0001-hold-unsafe-runtime-resolution.md)
+and [upstream-only audit](documentation/validation/runtime-follow-up-2026-11-25.md)
+remain historical evidence. No standalone application-wheel publication,
+registry upload, or deployment is included.
 
 A dependency-free CI job also enforces that external container images use
 digests and GitHub Actions use full commit SHAs. Renovate proposes refreshes of
@@ -183,8 +205,9 @@ were removed. See [SECURITY.md](./documentation/SECURITY.md).
 
 The complete documentation map and active dependency decision record are in
 [documentation/README.md](documentation/README.md). The Python 3.14/browser-use
-dependency migration remains unreleased until all exact-head release gates pass;
-do not suppress the audit or force incompatible transitive versions.
+dependency migration remains unreleased until all checks on the final head and
+the reviewed integration pass; do not suppress the audit or bypass dependency
+metadata to make it pass.
 
 ## Troubleshooting
 

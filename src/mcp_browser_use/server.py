@@ -7,6 +7,7 @@ import logging
 import os
 from dataclasses import dataclass
 
+import anyio
 from browser_use import Agent, BrowserSession
 from fastmcp import FastMCP
 
@@ -23,6 +24,8 @@ app = FastMCP("mcp_browser_use")
 _TRUE_VALUES = {"1", "true", "yes", "on"}
 _MAX_TASK_CHARS = 20_000
 _MAX_CONTEXT_CHARS = 20_000
+_BROWSER_STOP_TIMEOUT_SECONDS = 10
+_BROWSER_KILL_TIMEOUT_SECONDS = 5
 
 
 def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
@@ -103,7 +106,7 @@ def _task_with_context(task: str, add_infos: str) -> str:
 
 
 async def execute_browser_agent(task: str, add_infos: str = "") -> str:
-    """Execute one isolated browser-use agent and always release its session."""
+    """Execute one isolated agent and attempt bounded, cancellation-safe cleanup."""
 
     task_prompt = _task_with_context(task, add_infos)
     runtime = AgentRuntimeConfig.from_env()
@@ -151,14 +154,40 @@ async def _run_agent(task_prompt: str, runtime: AgentRuntimeConfig) -> str:
         raise RuntimeError("Browser agent run failed; inspect server logs.") from error
     finally:
         if browser_session is not None:
-            try:
+            await _close_browser_session(browser_session)
+
+
+async def _close_browser_session(browser_session: BrowserSession) -> None:
+    """Finish bounded shutdown attempts without consuming request cancellation."""
+
+    # MCP cancels an AnyIO scope, which re-delivers cancellation at checkpoints.
+    # Keep the run's semaphore slot until graceful/forced cleanup has completed
+    # or reached its own deadline, without consuming the original cancellation.
+    cancelled: asyncio.CancelledError | None = None
+    with anyio.CancelScope(shield=True):
+        try:
+            with anyio.fail_after(_BROWSER_STOP_TIMEOUT_SECONDS):
                 await browser_session.stop()
-            except Exception:
-                logger.warning("Graceful browser stop failed; forcing shutdown")
-                try:
-                    await browser_session.kill()
-                except Exception:
-                    logger.exception("Forced browser shutdown also failed")
+            return
+        except asyncio.CancelledError as error:
+            # Direct asyncio Task.cancel() can arrive during cleanup, outside
+            # AnyIO's scope shielding. Attempt forced shutdown, then re-raise it.
+            cancelled = error
+            logger.warning("Browser stop was cancelled; forcing shutdown")
+        except Exception:
+            logger.warning(
+                "Graceful browser stop failed or timed out; forcing shutdown"
+            )
+        try:
+            with anyio.fail_after(_BROWSER_KILL_TIMEOUT_SECONDS):
+                await browser_session.kill()
+        except asyncio.CancelledError as error:
+            cancelled = cancelled or error
+            logger.warning("Forced browser shutdown was cancelled")
+        except Exception:
+            logger.exception("Forced browser shutdown failed or timed out")
+    if cancelled is not None:
+        raise cancelled
 
 
 @app.tool()

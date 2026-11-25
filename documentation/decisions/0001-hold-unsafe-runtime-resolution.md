@@ -149,3 +149,18 @@ its harness edge, and behavioral validation of actual artifacts. The new
 harness may narrow that scope; metadata alone does not prove compatibility.
 The reversal criteria remain unchanged. No fork, override, suppression, merge,
 or release is authorized by this evidence update.
+
+## 2026-11-25 scoped owned-build successor
+
+The earlier evidence above remains unchanged. The subsequently authorized
+compatibility work is recorded in
+[decision 0002](0002-owned-repository-compatibility-build.md): an owned
+browser-use packaging build for frozen repository and Docker delivery, with
+the upstream runtime source, license, advisory identity, and provenance
+preserved. The [scoped validation receipt](../validation/owned-runtime-compatibility-2026-11-25.md)
+separates the new graph's local evidence from remaining hosted gates.
+
+Decision 0002 accepts that bounded path, effective only when PR #51 is merged
+after its mandatory checks pass on the final candidate. Until those conditions
+are met, this hold remains in effect. No general wheel/registry release,
+audit suppression, or indefinite support commitment follows from this work.
