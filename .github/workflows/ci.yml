@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: "3.15"
       # Standard library only: this contract must not depend on the audited lock.
       - run: python -m unittest discover -s tests -p 'test_container_supply_chain.py' -v
       - run: python compat/browser-use/verify.py
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.14"
+          python-version: "3.15"
       - run: python -m pip install --disable-pip-version-check uv==0.12.3
       - run: python compat/browser-use/build.py --check
 
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.14"
+          python-version: "3.15"
       - run: python -m pip install --disable-pip-version-check uv==0.12.3
       - run: uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file /tmp/requirements.txt
       - run: uvx --from pip-audit==2.10.1 pip-audit -r /tmp/requirements.txt

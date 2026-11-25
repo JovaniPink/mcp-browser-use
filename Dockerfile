@@ -1,6 +1,6 @@
 # Build with Python 3.14 and copy the pinned uv binary from its versioned image.
 # External images are pinned to reviewed manifest-list digests; Renovate refreshes them.
-FROM python:3.14-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56 AS uv
+FROM python:3.15-slim-bookworm@sha256:498829c717b1e59fc42f0e7865eafe4e04ca0f70a3769d4ae70ba218df54507c AS uv
 COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc /uv /uvx /bin/
 
 RUN apt-get update \
@@ -40,7 +40,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 CMD ["/app/.venv/bin/python", "-m", "pytest", "-q"]
 
-FROM python:3.14-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56
+FROM python:3.15-slim-bookworm@sha256:498829c717b1e59fc42f0e7865eafe4e04ca0f70a3769d4ae70ba218df54507c
 
 WORKDIR /app
 
