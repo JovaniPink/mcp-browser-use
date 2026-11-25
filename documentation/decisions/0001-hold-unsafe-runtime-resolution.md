@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-08-17
+- **Last verified:** 2026-11-25
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -32,6 +32,11 @@ audited application environment.
 This is a release hold, not a conclusion that every upstream advisory is
 exploitable through this server.
 
+On 2026-08-21, `browser-use` 0.13.8 reduced the exact runtime audit from 53
+advisories in five packages to six advisories in three packages by updating
+aiohttp and Pillow. Its metadata still pins Click 8.3.1, MCP 1.26.0, and pypdf
+6.14.2 below their audited fixes, so the hold remains active.
+
 ## Consequences
 
 - The modernization and image-pin pull requests remain unmerged.
@@ -53,3 +58,109 @@ The resulting exact head must then provide a committed reproducible lock, clean
 dependency conflict and vulnerability checks, the full Python matrix, a
 container build and smoke test using that lock, and current MCP/browser boundary
 tests. Record the replacement decision instead of rewriting this history.
+
+## 2026-09-05 candidate follow-through
+
+The 0.13.8 frozen head now reports ten advisories across the same three packages.
+Current [browser-use metadata](https://pypi.org/pypi/browser-use/0.13.10/json)
+permits patched versions but requires MCP 2, outside FastMCP 3.4.6's range.
+The compatible candidate therefore pairs browser-use 0.13.10 with FastMCP 4.0.3,
+following the [FastMCP migration guide](https://gofastmcp.com/getting-started/upgrading/from-fastmcp-3).
+Local Python 3.14 tests, automatic/legacy protocol exchanges, dependency
+compatibility and the runtime audit pass without overrides or suppressions.
+This does not reverse the release hold: complete matrix, container and hosted
+checks on the committed candidate remain necessary, as does separate merge
+authorization. This note supplements the historical evidence above.
+
+## 2026-09-26 status update
+
+Hosted checks on PR #47 head `0e9545a` (browser-use 0.13.10, FastMCP 4.0.3)
+all passed on 2026-09-06, including the runtime audit. The Click, MCP and pypdf
+blocker is resolved.
+
+Re-running the same exact audit on 2026-09-26 reports two new advisories in
+anyio 4.12.1 (CVE-2026-63374 and CVE-2026-64847, fixed in 4.14.2).
+browser-use 0.13.10 is still the latest release and pins `anyio==4.12.1`
+exactly, so `uv lock --upgrade-package anyio` cannot move it. This is the same
+kind of blocker, now in a different package, and the hold stays active. The
+owner re-confirmed that it should not be lifted with an override or
+suppression.
+
+The work from PR #47 and the digest pinning from PR #48 are now combined on one
+branch. PR #48 is superseded, because its digests were for the previous base
+images. Once a browser-use release permits anyio 4.14.2 or later, lifting the
+hold takes one step: refresh the lock, then re-run the existing gates on that
+exact head. The reversal criteria above are unchanged.
+
+## 2026-11-17 compatible repair and refreshed evidence
+
+The earlier two-advisory status is historical. A fresh unsuppressed audit of
+the selected PR #51 lock reports 140 advisory records across 17 packages.
+The compatible browser-use 0.13.14 update and targeted lock refresh reduce
+that to 76 records across five packages. Unrelated locked versions are
+preserved. Python >=3.11.5 excludes an unsafe SoupSieve fallback selected by
+earlier Python 3.11 patches.
+
+The repository-owned Ollama temperature mapping and reusable-workflow pin
+detection defects are repaired with regressions that failed before the fixes.
+These repairs do not reverse the dependency hold.
+
+The current upstream constraints still require AnyIO 4.12.1, MCP 2.1.1,
+Pillow 12.3.0, and pypdf 6.16.2. A normal resolver rejects patched FastMCP 4.1.2
+because it requires MCP >=2.2.0. Browser-use 1.0.6 both changes the runtime
+contract materially and still pins the affected Pillow version, so it is not
+adopted as a security shortcut.
+
+A metadata-only feasibility probe also showed that changing the four
+browser-use pins alone is insufficient: its browser-harness 0.1.13 dependency
+independently pins Pillow 12.3.0. A maintained compatibility fork would need
+to address both packages and test their behavioral differences. No such fork
+has been adopted or authorized by this update.
+
+The [validation record](../validation/runtime-repair-2026-11-17.md) identifies
+the exact manifest and lock, remaining packages, commands, and evidence
+limits. The existing reversal criteria and separate merge authorization
+remain in force; no advisory suppression or resolver override was introduced.
+
+## 2026-11-25 upstream progress and integration reconciliation
+
+PR #51 remains the single draft integration candidate. PR #47's head is an
+ancestor of its runtime head; the complete PR #48 patch is preserved through
+the current Docker/Action pins, Renovate policy, dependency-free CI job, and
+enhanced contracts. The superseded PRs can be closed as source history without
+merging them or treating the security hold as resolved.
+
+A fresh audit of the unchanged runtime reports 77 records across the same
+five packages. The extra MCP OAuth-client advisory explicitly excludes SDK
+servers and stdio clients, but remains in the unsuppressed audit. The
+[November 25 record](../validation/runtime-follow-up-2026-11-25.md) and its
+machine-readable receipt preserve exact inputs and results.
+
+Published browser-harness 0.1.15 now requires Pillow 13.0.0 by default. That
+supersedes the earlier conclusion that no published harness permits it.
+Browser-use 0.13.14 remains the newest 0.x release and still requires harness
+0.1.13 and the four affected exact transitive versions. Ordinary resolver
+probes reject the new harness and patched FastMCP. Browser-use 1.0.8 still
+pins affected Pillow and removes public APIs used by this server.
+
+There is no supported clean lock refresh at this check. A compatibility change
+would still require an explicit maintenance decision for browser-use, including
+its harness edge, and behavioral validation of actual artifacts. The new
+harness may narrow that scope; metadata alone does not prove compatibility.
+The reversal criteria remain unchanged. No fork, override, suppression, merge,
+or release is authorized by this evidence update.
+
+## 2026-11-25 scoped owned-build successor
+
+The earlier evidence above remains unchanged. The subsequently authorized
+compatibility work is recorded in
+[decision 0002](0002-owned-repository-compatibility-build.md): an owned
+browser-use packaging build for frozen repository and Docker delivery, with
+the upstream runtime source, license, advisory identity, and provenance
+preserved. The [scoped validation receipt](../validation/owned-runtime-compatibility-2026-11-25.md)
+separates the new graph's local evidence from remaining hosted gates.
+
+Decision 0002 accepts that bounded path, effective only when PR #51 is merged
+after its mandatory checks pass on the final candidate. Until those conditions
+are met, this hold remains in effect. No general wheel/registry release,
+audit suppression, or indefinite support commitment follows from this work.

@@ -1,2 +1,0 @@
-class SystemPrompt:
-    pass

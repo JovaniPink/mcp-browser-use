@@ -1,0 +1,50 @@
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "browser-use"
+-description = "Open-source browser agent + hosted cloud browsers for AI agents, from $0.02/browser-hour"
++description = "Browser-use 0.13.14 owned packaging compatibility candidate mcbu1 for MCP Browser Use"
+ authors = [{ name = "Gregor Zunic" }]
+ version = "0.13.14"
+ readme = "README.md"
+@@ -12,7 +12,7 @@
+ ]
+ dependencies = [
+     "aiohttp==3.14.5",
+-    "anyio==4.12.1",
++    "anyio==4.14.2",
+     "bubus==1.5.6",
+     "click==8.3.3",
+     "InquirerPy==0.3.4",
+@@ -37,17 +37,17 @@
+     "google-api-python-client==2.188.0",
+     "google-auth==2.48.0",
+     "google-auth-oauthlib==1.2.4",
+-    "mcp==2.1.1",
+-    "pypdf==6.16.2",
++    "mcp==2.3.0",
++    "pypdf==6.21.4",
+     "reportlab==4.4.9",
+     "cdp-use==1.4.5",
+     "pyotp==2.9.0",
+-    "pillow==12.3.0",
++    "pillow==13.0.0",
+     "cloudpickle==3.1.2",
+     "markdownify==1.2.2",
+     "python-docx==1.2.0",
+     "browser-use-sdk>=3.10.0,<4",
+-    "browser-harness==0.1.13",
++    "browser-harness==0.1.15",
+ ]
+ # google-api-core: only used for Google LLM APIs
+ # pyperclip: only used for examples that use copy/paste
+@@ -82,7 +82,7 @@
+ ]
+ eval = [
+     "lmnr[all]==0.7.42",
+-    "anyio==4.12.1",
++    "anyio==4.14.2",
+     "psutil==7.2.2",
+     "datamodel-code-generator==0.75.1",
+ ]
