@@ -62,6 +62,16 @@ Only configure the selected provider. Never place real values in
 | `BROWSER_USE_CDP_URL` | unset | Attach to an existing CDP endpoint instead of launching Chromium. |
 | `CHROME_PATH` | unset locally | Explicit Chrome/Chromium executable. The container uses `/usr/bin/chromium`. |
 
+Locally launched sessions with a nonempty navigation allowlist start with
+Chromium's `--no-startup-window` flag. BrowserSession then creates a permitted
+`about:blank` page, avoiding a race between closing a disallowed startup tab
+and attaching its handlers. Existing launch arguments are preserved. This
+adaptation does not apply to attached CDP sessions or cloud sessions.
+
+Profile data remains reusable when persistence is configured, but automatic
+startup and session-restored windows are suppressed for these allowlisted
+local launches.
+
 ## Persistence and debugging
 
 | Variable | Default | Contract |

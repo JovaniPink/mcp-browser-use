@@ -182,4 +182,22 @@ def create_browser_session(
             if key != "proxy"
         },
     )
-    return BrowserSession(**kwargs)
+    session = BrowserSession(**kwargs)
+    # Use the resolved public profile: BrowserSession normalizes cloud aliases,
+    # inherited profiles, and implicit local launches during construction.
+    profile = session.browser_profile
+    if (
+        profile.allowed_domains
+        and profile.is_local
+        and not profile.cdp_url
+        and not profile.use_cloud
+        and profile.cloud_browser_params is None
+    ):
+        # Chromium's startup page can be outside the allowlist and be closed
+        # while upstream attaches handlers. Let BrowserSession create its
+        # permitted about:blank page instead, preserving caller-owned args.
+        args = list(profile.args)
+        if not any(arg.split("=", 1)[0] == "--no-startup-window" for arg in args):
+            args.append("--no-startup-window")
+        profile.args = args
+    return session

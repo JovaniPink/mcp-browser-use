@@ -11,6 +11,7 @@ import psutil
 from browser_use import BrowserSession
 
 from mcp_browser_use import server
+from mcp_browser_use.browser import browser_manager
 
 EVENTS = Path(os.environ["MCP_COMPAT_EVENTS"])
 WORKSPACE = Path(os.environ["MCP_COMPAT_WORKSPACE"])
@@ -85,16 +86,18 @@ def create_browser():
     identity = f"probe-{COUNTER}"
     if not BROWSER:
         return CheckpointBrowser(identity)
-    return ObservedBrowser(
-        id=identity,
-        executable_path=BROWSER,
-        headless=True,
-        use_cloud=False,
-        cdp_url=None,
-        user_data_dir=WORKSPACE / identity,
-        allowed_domains=["127.0.0.1", "localhost"],
-        enable_default_extensions=False,
-        disable_security=False,
+    return browser_manager.create_browser_session(
+        {
+            "id": identity,
+            "executable_path": BROWSER,
+            "headless": True,
+            "use_cloud": False,
+            "cdp_url": None,
+            "user_data_dir": WORKSPACE / identity,
+            "allowed_domains": ["127.0.0.1", "localhost"],
+            "enable_default_extensions": False,
+            "disable_security": False,
+        }
     )
 
 
@@ -138,6 +141,8 @@ if __name__ == "__main__":
     if os.environ.get("BROWSER_USE_OFFLINE") != "1":
         raise RuntimeError("offline probe requires BROWSER_USE_OFFLINE=1")
     emit("server-started", pid=os.getpid(), created=psutil.Process().create_time())
+    # Observe cleanup on the same factory-created session the application uses.
+    browser_manager.BrowserSession = ObservedBrowser
     server.get_llm_model = lambda *args, **kwargs: object()
     server.create_browser_session = create_browser
     server.Agent = OfflineAgent

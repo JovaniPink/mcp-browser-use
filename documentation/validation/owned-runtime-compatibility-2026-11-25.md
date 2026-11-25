@@ -8,9 +8,10 @@ vulnerabilities, and zero skipped entries**, including `browser-use` 0.13.14.
 This is a different graph from the earlier
 [77-record upstream-only audit](runtime-follow-up-2026-11-25.md).
 
-**This is the pre-integration evidence record.** The first hosted run passed its
-matrix, source reproduction, audit, and container build checks, then failed
-the browser fixture's DNS configuration as recorded below. See
+**This is the pre-integration evidence record.** The first two hosted runs passed
+their matrix, source reproduction, audit, and container build checks, then
+exposed a fixture DNS error and an application startup/allowlist interaction
+as recorded below. See
 [PR #51](https://github.com/JovaniPink/mcp-browser-use/pull/51) for subsequent
 validation of the revised candidate and the integration outcome. Local component
 and checkpointed subprocess results do not establish real-browser
@@ -31,6 +32,9 @@ previous commit's hosted results cannot qualify a changed candidate.
 | `uv.lock` | `8e24669b477fe34ce03403f4d68bb0728f93e3e91197d20f0b9fcae638232cc9` |
 | `src/mcp_browser_use/server.py` | `ce30bd2e289526f9b61e329da547b71f04d7f97b1bb000f179cbdeb696e26294` |
 | `tests/test_server_cancellation.py` | `a71566142ba6ae384e3f2a0a4ee15426074201e9d8bc77f27de2a9e17907e6c5` |
+| `src/mcp_browser_use/browser/browser_manager.py` | `3066762af78a1a459f34cdbde222f180b5636cbd3d516a1c2b7fa78e53827d84` |
+| `tests/test_browser_manager.py` | `e50de6c75423076af25c4bb096500c1b54469921e0f2ab192296b8d1af985c0c` |
+| `compat/browser-use/mcp_transport_fixture.py` | `b6e3fbf2e96a3bff287cd21585bd2eea792c30ae06c699f9e9c37aa8290ec8e6` |
 | Owned browser-use wheel, build `1mcbu1` | `f2cce85e872041b6407d65ae14b635df10f1f443cda2c2e814169ea330e9bfd1` |
 | `compat/browser-use/provenance.json` | `2cb497cf1f70cdd04c00eca4f65882824ef744f72b9b9440081bf31ba4724554` |
 | Verified upstream 0.13.14 source archive | `9bb2f3d7ea215bf67b415c8e6e546413a3712ac5ea775b223b452189f4582d9d` |
@@ -71,7 +75,8 @@ export, and audit. Hosted checks use the committed environment without it.
 | Check | Observed result and scope |
 | --- | --- |
 | Frozen environment, `uv lock --check`, `uv pip check` | Passed; 134 installed distributions compatible |
-| Full test suite | 70 passed, with 22 upstream deprecation warnings |
+| Full test suite after the startup adaptation | 85 passed, with 22 upstream deprecation warnings |
+| Browser factory configuration boundary | 18 tests passed within the full suite, including local launch, supplied profile, caller argument preservation, persistence, external CDP, and cloud aliases |
 | Cleanup regressions and existing server tests | 23 passed, including four new cancellation/shutdown cases |
 | Dependency-free immutable-input tests | Six passed |
 | Ruff lint and format checks | Passed |
@@ -117,7 +122,7 @@ Those component checks used standalone probe SHA-256
 The integrated probe initially changed import grouping. Its first hosted
 execution exposed the fixture resolver error below; the revised probe also
 adds an explicit IPv4 loopback exclusion. Full execution of that revision was
-still outstanding when this receipt was prepared. Component success does not prove live
+then blocked by the application startup interaction below. Component success does not prove live
 CDP capture, harness daemon/IPC behavior, an LLM Agent loop, or UID 10001
 operation; the PDF fixture does not qualify encrypted, malformed, or OCR PDFs.
 
@@ -156,6 +161,49 @@ establish a revised browser pass.
 The subsequent real MCP/browser process-exit step was **skipped** because the
 browser/document step failed. Both real-browser probes and every mandatory
 check must pass together on the revised head before integration.
+
+## Second hosted execution and application startup adaptation
+
+[CI run 45696465156](https://github.com/JovaniPink/mcp-browser-use/actions/runs/45696465156)
+tested head `60307d6d211c8465902634b6a5aac735bb0542b2` with the explicit
+IPv4 loopback exclusion. The matrix, audit, source reproduction, immutable
+inputs, image builds, test-image suite, import, Chromium version, and UID check
+passed again. The browser/document probe then timed out during
+`BrowserSession.start()`, before fixture navigation. The real MCP step was
+again skipped.
+
+The log showed Chromium's `chrome://new-tab-page-third-party/` startup tab
+being closed by the navigation allowlist while browser-use still attached
+its event handlers. `PopupsWatchdog.on_TabCreatedEvent` remained pending;
+the startup deadline expired, and a focus handler subsequently reported the
+closed target. This affects the application's documented
+`BROWSER_USE_ALLOWED_DOMAINS` path, so the adaptation belongs in its browser
+factory rather than only in validation fixtures.
+
+The factory now inspects the constructed session's resolved public profile.
+For a locally launched session with a nonempty allowlist, no CDP URL, and no
+cloud configuration, it copies the launch arguments and adds Chromium's
+`--no-startup-window` flag if absent. BrowserSession's existing no-target
+path then creates permitted `about:blank`. Cloud aliases and supplied
+profiles are resolved by the upstream constructor before this decision.
+Attached CDP and cloud sessions retain their arguments. Domain restrictions,
+security settings, caller-owned argument lists, and configured profile data
+remain intact. Automatic startup and session-restored windows are suppressed
+for these allowlisted local launches.
+
+Three focused regressions failed before the adaptation: implicit local
+launch, environment-provided launch arguments, and a supplied local profile
+all lacked the required startup flag. The final full suite passes 85 tests,
+including 18 browser-factory cases and the existing four cleanup regressions.
+The tests construct actual BrowserSession profiles without launching a browser
+or contacting a provider. Compilation, Ruff lint/format, and whitespace checks
+also pass. The dependency graph and owned wheel are unchanged.
+
+The real MCP fixture now calls the application's same browser factory and
+substitutes only an observing BrowserSession subclass for cleanup evidence;
+the checkpoint-only path is unchanged. These local results do not prove the
+startup adaptation on actual Chromium. Both required real-browser probes
+remain hosted acceptance gates for the revised candidate.
 
 ## Mandatory hosted qualification
 
