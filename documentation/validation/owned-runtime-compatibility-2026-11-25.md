@@ -8,9 +8,13 @@ vulnerabilities, and zero skipped entries**, including `browser-use` 0.13.14.
 This is a different graph from the earlier
 [77-record upstream-only audit](runtime-follow-up-2026-11-25.md).
 
-**Hosted qualification of the final published head is pending.** Local
-component and checkpointed subprocess results do not establish real-browser
-or container compatibility. [Decision 0002](../decisions/0002-owned-repository-compatibility-build.md)
+**This is the pre-integration evidence record.** The first hosted run passed its
+matrix, source reproduction, audit, and container build checks, then failed
+the browser fixture's DNS configuration as recorded below. See
+[PR #51](https://github.com/JovaniPink/mcp-browser-use/pull/51) for subsequent
+validation of the revised candidate and the integration outcome. Local component
+and checkpointed subprocess results do not establish real-browser
+compatibility. [Decision 0002](../decisions/0002-owned-repository-compatibility-build.md)
 accepts the bounded frozen-checkout/Docker path, effective only when PR #51 is
 merged after its mandatory checks pass. This receipt does not record a package
 release, deployment, paid provider journey, or completed adoption.
@@ -110,8 +114,10 @@ non-loopback connection was attempted.
 
 Those component checks used standalone probe SHA-256
 `6255e53c3fd8c397a95d5320032f2f55db5f1a05f003d18dad1ba218a9100f46`.
-The integrated probe differs only in import grouping, but its required full
-runtime execution is still pending. Component success does not prove live
+The integrated probe initially changed import grouping. Its first hosted
+execution exposed the fixture resolver error below; the revised probe also
+adds an explicit IPv4 loopback exclusion. Full execution of that revision was
+still outstanding when this receipt was prepared. Component success does not prove live
 CDP capture, harness daemon/IPC behavior, an LLM Agent loop, or UID 10001
 operation; the PDF fixture does not qualify encrypted, malformed, or OCR PDFs.
 
@@ -119,6 +125,37 @@ The full host probe failed rather than skipped: `/usr/bin/chromium --version`
 exited 127 because its `/usr/lib/chromium` symlink targets the absent
 `/opt/codex/browsers/chromium`. Docker was unavailable locally. No browser
 download or provider call was used to substitute for the missing runtime.
+
+## First hosted execution and fixture correction
+
+[CI run 45695403277](https://github.com/JovaniPink/mcp-browser-use/actions/runs/45695403277)
+tested head `0bf4e9f107dfb5cefec82f77cb096dcc3dc48d29` through its PR merge
+checkout with main `8fe2130b3cfb520f4d2fe9d5d473dd96dcd6d026`. The Python
+3.11-3.14 matrix, immutable-input checks, exact owned-wheel reproduction, and
+unsuppressed runtime audit passed. The audit included the local owned wheel
+and reported no known vulnerabilities. The separate
+[CodeQL run](https://github.com/JovaniPink/mcp-browser-use/actions/runs/45695394268)
+also passed.
+
+The [container job](https://github.com/JovaniPink/mcp-browser-use/actions/runs/45695403277/job/139491393205)
+passed test/runtime image builds, the test-image suite, runtime import,
+Chromium version, and UID 10001 verification. Actual Chromium
+156.0.8078.108 started in the offline browser probe. Navigation to its
+`http://127.0.0.1:<port>/fixture` then failed with
+`net::ERR_NAME_NOT_RESOLVED`. The probe's own deny-all host resolver rule
+excluded `localhost` but omitted its numeric `127.0.0.1` fixture origin.
+
+The correction adds `EXCLUDE 127.0.0.1` beside `EXCLUDE localhost` while
+retaining the deny-all mapping, proxy guard, Python loopback guard, offline
+mode, and container network isolation. The MCP fixture has no corresponding
+host resolver override and needs no matching change. This correction changes
+probe configuration only; it does not change the runtime dependency graph.
+Local compilation, Ruff, and whitespace checks qualify the edit; they do not
+establish a revised browser pass.
+
+The subsequent real MCP/browser process-exit step was **skipped** because the
+browser/document step failed. Both real-browser probes and every mandatory
+check must pass together on the revised head before integration.
 
 ## Mandatory hosted qualification
 

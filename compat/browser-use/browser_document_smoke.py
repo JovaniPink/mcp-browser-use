@@ -287,7 +287,8 @@ async def probe(work: Path, chromium: str, denied: list[str]) -> dict[str, Any]:
                 "--no-default-browser-check",
                 f"--proxy-server={origin}",
                 "--proxy-bypass-list=127.0.0.1;localhost;[::1]",
-                "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost",
+                "--host-resolver-rules=MAP * ~NOTFOUND, "
+                "EXCLUDE localhost, EXCLUDE 127.0.0.1",
             ],
         }
     )
