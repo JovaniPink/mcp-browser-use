@@ -22,9 +22,11 @@ replacement.
 
 ## Evidence rules
 
-The [November 17 runtime repair record](validation/runtime-repair-2026-11-17.md)
-contains the latest bounded repair, supported-runtime tests, audit receipt, and
-remaining upstream dependency constraints.
+The [November 25 follow-up](validation/runtime-follow-up-2026-11-25.md)
+contains the current audit, published-dependency feasibility checks, and
+preservation evidence for the single integration candidate. The
+[November 17 repair record](validation/runtime-repair-2026-11-17.md) preserves
+the preceding code repairs and supported-runtime validation.
 
 - Distinguish unit tests, dependency resolution, vulnerability audit, container
   build, MCP-client integration, and isolated-browser operation.

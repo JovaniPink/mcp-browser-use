@@ -54,21 +54,23 @@ instructions.
 Use the committed `uv.lock` with `--frozen` for installs, tests, and runtime
 commands. A compatible environment (`uv pip check`) and a clean vulnerability
 audit are separate requirements. The current candidate pairs browser-use
-0.13.14 with FastMCP 4.0.3. Its November 17 targeted refresh removes 64 advisory
-records and 12 affected packages from the older lock, but 76 records remain in
-AnyIO, FastMCP, MCP, Pillow, and pypdf. Browser-use's exact pins prevent the
-patched AnyIO, MCP, Pillow, and pypdf versions; patched FastMCP also needs the
-newer MCP version. Browser-harness independently requires the affected Pillow
-version. The minimum Python version is now 3.11.5 to exclude an additional
-vulnerable SoupSieve fallback on older patch releases. See the
-[source-bound validation record](validation/runtime-repair-2026-11-17.md).
+0.13.14 with FastMCP 4.0.3. Its November 25 unsuppressed audit reports 77
+records across AnyIO, FastMCP, MCP, Pillow, and pypdf. Browser-use's exact pins
+prevent the patched AnyIO, MCP, Pillow, and pypdf versions; patched FastMCP
+also needs the newer MCP version. Browser-harness 0.1.15 now supports Pillow
+13, but browser-use still selects harness 0.1.13 and Pillow 12.3.0 exactly.
+The minimum Python version is 3.11.5 to exclude an additional vulnerable
+SoupSieve fallback on older patch releases. See the
+[current validation record](validation/runtime-follow-up-2026-11-25.md) for
+the audit's scope, advisory applicability, and executed upgrade probes.
 
 The release stays on hold under
 [decision 0001](decisions/0001-hold-unsafe-runtime-resolution.md) and
-[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until
-upstream publishes compatible metadata. A clean audit is a point-in-time result:
-CI re-runs it on every change, and new advisories can turn it red without a code
-change. Do not allowlist findings or override upstream exact transitive pins.
+[issue #45](https://github.com/JovaniPink/mcp-browser-use/issues/45) until a
+patched, compatible graph satisfies the recorded reversal criteria. A clean
+audit is a point-in-time result: CI re-runs it on every change, and new
+advisories can turn it red without a code change. Do not allowlist findings or
+override upstream exact transitive pins.
 
 External container images are pinned to manifest-list digests and GitHub
 Actions to full commit SHAs. A dependency-free CI job enforces this, and

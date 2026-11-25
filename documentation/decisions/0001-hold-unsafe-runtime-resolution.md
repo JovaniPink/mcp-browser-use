@@ -2,7 +2,7 @@
 
 - **Status:** Active hold
 - **Decided:** 2026-08-16
-- **Last verified:** 2026-11-17
+- **Last verified:** 2026-11-25
 - **Issues:** [#45](https://github.com/JovaniPink/mcp-browser-use/issues/45), [#49](https://github.com/JovaniPink/mcp-browser-use/issues/49)
 
 ## Context
@@ -121,3 +121,31 @@ The [validation record](../validation/runtime-repair-2026-11-17.md) identifies
 the exact manifest and lock, remaining packages, commands, and evidence
 limits. The existing reversal criteria and separate merge authorization
 remain in force; no advisory suppression or resolver override was introduced.
+
+## 2026-11-25 upstream progress and integration reconciliation
+
+PR #51 remains the single draft integration candidate. PR #47's head is an
+ancestor of its runtime head; the complete PR #48 patch is preserved through
+the current Docker/Action pins, Renovate policy, dependency-free CI job, and
+enhanced contracts. The superseded PRs can be closed as source history without
+merging them or treating the security hold as resolved.
+
+A fresh audit of the unchanged runtime reports 77 records across the same
+five packages. The extra MCP OAuth-client advisory explicitly excludes SDK
+servers and stdio clients, but remains in the unsuppressed audit. The
+[November 25 record](../validation/runtime-follow-up-2026-11-25.md) and its
+machine-readable receipt preserve exact inputs and results.
+
+Published browser-harness 0.1.15 now requires Pillow 13.0.0 by default. That
+supersedes the earlier conclusion that no published harness permits it.
+Browser-use 0.13.14 remains the newest 0.x release and still requires harness
+0.1.13 and the four affected exact transitive versions. Ordinary resolver
+probes reject the new harness and patched FastMCP. Browser-use 1.0.8 still
+pins affected Pillow and removes public APIs used by this server.
+
+There is no supported clean lock refresh at this check. A compatibility change
+would still require an explicit maintenance decision for browser-use, including
+its harness edge, and behavioral validation of actual artifacts. The new
+harness may narrow that scope; metadata alone does not prove compatibility.
+The reversal criteria remain unchanged. No fork, override, suppression, merge,
+or release is authorized by this evidence update.
